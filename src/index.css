@@ -1,20 +1,60 @@
 @import "tailwindcss";
 
+/* @tailwind base;
+@tailwind components;
+@tailwind utilities; */
 
-/* Lanyard CSS */
-* {
-    box-sizing: border-box;
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+html {
+  height: 100%;
+  overflow-y: scroll;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background-color: black;
+  overflow-x: hidden;
+}
+
+@keyframes rgbLine {
+  0% {
+    transform: translateX(-100%);
   }
-  
-  html,
-  body,
-  #root {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
+  100% {
+    transform: translateX(100%);
   }
-  
-  body {
-    background-color: #111;
+}
+
+.animate-rgbLine {
+  animation: rgbLine 2s linear infinite;
+}
+
+/* Glass Card About Me */
+@keyframes rgb-border {
+  0% {
+    border-color: rgb(255, 0, 0); /* Merah */
   }
+  25% {
+    border-color: rgb(0, 255, 0); /* Hijau */
+  }
+  50% {
+    border-color: rgb(0, 0, 255); /* Biru */
+  }
+  75% {
+    border-color: rgb(255, 255, 0); /* Kuning */
+  }
+  100% {
+    border-color: rgb(255, 0, 0); /* Kembali ke Merah */
+  }
+}

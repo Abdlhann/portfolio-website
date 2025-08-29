@@ -1,8 +1,9 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
   text-align: center;
+  overflow-x: hidden;
 }
 
 .logo {
@@ -39,4 +40,257 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* Navbar animations */
+.background-animate {
+  background-size: 200%;
+  -webkit-animation: AnimateGradient 3s ease infinite;
+  -moz-animation: AnimateGradient 3s ease infinite;
+  animation: AnimateGradient 3s ease infinite;
+}
+
+@keyframes AnimateGradient {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Quick actions menu animation */
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.quick-actions-enter {
+  animation: slideDownFade 0.2s ease-out;
+}
+
+/* Chat Component Optimizations */
+#chat-portal {
+  isolation: isolate;
+  position: fixed;
+  z-index: 99999;
+  pointer-events: none;
+}
+
+#chat-portal > * {
+  pointer-events: auto;
+}
+
+.chat-message-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.chat-message-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.chat-message-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.chat-message-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 150ms ease-in, transform 150ms ease-in;
+}
+
+@keyframes typing {
+  0% { width: 0; }
+  30% { width: 3px; }
+  60% { width: 6px; }
+  100% { width: 9px; }
+}
+
+.typing-indicator::after {
+  content: '';
+  display: inline-block;
+  width: 9px;
+  height: 3px;
+  background-color: currentColor;
+  animation: typing 1s infinite;
+  vertical-align: middle;
+  margin-left: 3px;
+}
+
+/* Scrollbar Styling */
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.5);
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.7);
+}
+
+/* Chat animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes typing {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+/* Chat bubble animations */
+.chat-bubble-enter {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  width: fit-content;
+}
+
+.typing-indicator span {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+.typing-indicator span:nth-child(1) { animation: typing 1s infinite; }
+.typing-indicator span:nth-child(2) { animation: typing 1s infinite 0.2s; }
+.typing-indicator span:nth-child(3) { animation: typing 1s infinite 0.4s; }
+
+/* Message input animations */
+.message-input:focus + .send-button {
+  transform: scale(1.1);
+}
+
+.send-button {
+  transition: transform 0.2s ease;
+}
+
+/* Chat emotions */
+.chat-emotion {
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
+  font-size: 1.2em;
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Voice tone indicators */
+.voice-tone {
+  font-size: 0.8em;
+  opacity: 0.7;
+  font-style: italic;
+  margin-top: 4px;
+}
+
+/* Think animation */
+.think-animation {
+  display: inline-block;
+  margin-left: 4px;
+}
+
+.think-animation::after {
+  content: '';
+  animation: blink 1s infinite;
+}
+
+/* Personality animations */
+.personality-indicator {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.8em;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.chat-message:hover .personality-indicator {
+  opacity: 1;
+}
+
+/* Response feedback */
+.response-feedback {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.chat-message:hover .response-feedback {
+  opacity: 1;
+}
+
+/* Empathy indicators */
+.empathy-emoji {
+  position: absolute;
+  top: -15px;
+  right: -10px;
+  font-size: 1.2em;
+  transform: rotate(10deg);
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Context awareness animation */
+.context-aware {
+  border-left: 3px solid;
+  animation: borderPulse 2s infinite;
+}
+
+@keyframes borderPulse {
+  0%, 100% { border-color: rgba(139, 92, 246, 0.3); }
+  50% { border-color: rgba(139, 92, 246, 1); }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Fixed body when modal is open */
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
 }

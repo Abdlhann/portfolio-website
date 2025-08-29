@@ -1,11 +1,12 @@
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+
 export default defineConfig({
+  assetsInclude: [ '**/*.glb'],
+  base: '/portfolio-website/',
   plugins: [
-    tailwindcss(),
+    react(), tailwindcss(),
   ],
-  server: {
-    '/projects': 'http://localhost:3000',
-      '/upload-project': 'http://localhost:3000',
   }
-})
+)
