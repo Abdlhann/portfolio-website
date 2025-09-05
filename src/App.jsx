@@ -13,7 +13,6 @@ import { LoginForm } from './components/auth/LoginForm';
 import { checkAuth, clearAuth } from './components/auth/authUtils';
 import { trackPageView } from './utils/analytics';
 import { Footer } from './components/Footer.jsx';
-import { AIChat } from './components/ChatAISS.jsx';
 import { db } from './config/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import './App.css';
@@ -73,6 +72,15 @@ function AppContent() {
       console.log("Projects loaded from Firebase:", projectsData.length);
     } catch (error) {
       console.error("Error loading projects from Firebase:", error);
+      
+      // Show specific error message for permissions issues
+      if (error.code === 'permission-denied') {
+        console.error("Firebase permissions error: Make sure Firestore rules allow public read access");
+      } else if (error.code === 'unavailable') {
+        console.error("Firebase service unavailable: Check your internet connection");
+      } else {
+        console.error("Firebase error details:", error.message);
+      }
     }
   };
 
@@ -152,7 +160,6 @@ function AppContent() {
               <RGBDivider />
               <Contact />
               <Footer />
-              <AIChat />
             </>
           }
         />

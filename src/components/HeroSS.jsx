@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { TypeAnimation } from 'react-type-animation';
-import { AIChat } from './ChatAISS.jsx';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import NET from 'vanta/dist/vanta.net.min';
@@ -144,9 +143,7 @@ export function Hero() {
           <span className="relative z-10">My Projects</span>
         </motion.a>
 
-        <div className="mt-8 static">
-          <AIChat />
-        </div>
+        
         
         {/* Scroll Down Indicator */}
         <motion.div 

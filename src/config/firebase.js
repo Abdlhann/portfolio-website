@@ -5,7 +5,7 @@ import { getAnalytics } from "firebase/analytics";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  apiKey: "AIzaSyA6fsvrc_wljjSaYbRz5KxwkxwHlTsc5JA",
   authDomain: "db-portfolio-web.firebaseapp.com",
   projectId: "db-portfolio-web",
   storageBucket: "db-portfolio-web.firebasestorage.app",

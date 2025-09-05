@@ -103,6 +103,16 @@ export function Projects({ addedProjects = [] }) {
         setLoading(false);
       } catch (error) {
         console.error("Error fetching projects from Firebase:", error);
+        
+        // Show specific error message for permissions issues
+        if (error.code === 'permission-denied') {
+          console.error("Firebase permissions error: Make sure Firestore rules allow public read access");
+        } else if (error.code === 'unavailable') {
+          console.error("Firebase service unavailable: Check your internet connection");
+        } else {
+          console.error("Firebase error details:", error.message);
+        }
+        
         setLoading(false);
       }
     };
