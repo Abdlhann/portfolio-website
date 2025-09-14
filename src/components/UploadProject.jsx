@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getAnalyticsData } from '../utils/analytics';
 import { db, serverTimestamp } from '../config/firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { checkAuth } from './auth/authUtils';
 
 /**
  * Project Upload Component
@@ -179,7 +180,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
   }, []);
 
   // Validate and format project object before submitting to Firebase
-  const validateProject = (project) => {
+  const validateProject = (project, isUpdate = false) => {
     const errors = [];
 
     // Check required fields
@@ -191,7 +192,9 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
       errors.push('Description is required');
     }
 
-    if (!project.img) {
+    // For new projects, image is required
+    // For updates, image is optional (can use placeholder if none provided)
+    if (!isUpdate && !project.img) {
       errors.push('Project image is required');
     }
 
@@ -209,6 +212,9 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
       errors.push('Tags must be an array');
     }
 
+    // Use placeholder image if no image provided for updates
+    const finalImg = project.img || (isUpdate ? 'https://source.unsplash.com/random/400x300?tech' : project.img);
+
     // Return validation result
     return {
       isValid: errors.length === 0,
@@ -216,7 +222,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
       formattedProject: errors.length === 0 ? {
         title: project.title.trim(),
         desc: project.desc.trim(),
-        img: project.img,
+        img: finalImg,
         github: project.github ? project.github.trim() : '',
         demo: project.demo ? project.demo.trim() : '',
         tags: Array.isArray(project.tags) ? project.tags : [],
@@ -248,7 +254,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
     };
 
     // Validate project before submission
-    const { isValid, errors, formattedProject } = validateProject(projectData);
+    const { isValid, errors, formattedProject } = validateProject(projectData, false);
 
     if (!isValid) {
       showNotification(`Invalid project data: ${errors.join(', ')}`, 'error');
@@ -294,7 +300,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
   const finalizeProjectUpdate = async (updatedProject) => {
     try {
       // Validate the project data again before sending to Firebase
-      const { isValid, errors, formattedProject } = validateProject(updatedProject);
+      const { isValid, errors, formattedProject } = validateProject(updatedProject, true);
       
       if (!isValid) {
         showNotification(`Invalid project data: ${errors.join(', ')}`, 'error');
@@ -333,6 +339,15 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
 
   // Delete project from Firestore
   const handleConfirmDelete = async () => {
+    // Check authentication first
+    const auth = checkAuth();
+    if (!auth.isAuthenticated) {
+      showNotification('Error: You must be logged in to delete projects', 'error');
+      setShowModal(false);
+      setDeleteIndex(null);
+      return;
+    }
+
     console.log("Delete index:", deleteIndex);
     console.log("Projects length:", projects?.length);
     
@@ -747,7 +762,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
     const updatedProject = {
       title: newProject.title,
       desc: newProject.desc,
-      img: newImage ? null : oldProject.img, // Will be updated if there's a new image
+      img: oldProject.img || 'https://source.unsplash.com/random/400x300?tech', // Keep existing image or use placeholder
       github: newProject.github || '',
       demo: newProject.demo || '',
       tags: tagsArray,
@@ -758,7 +773,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
     };
 
     // Validate project data
-    const { isValid, errors } = validateProject(updatedProject);
+    const { isValid, errors } = validateProject(updatedProject, true);
     
     if (!isValid) {
       showNotification(`Invalid project data: ${errors.join(', ')}`, 'error');
@@ -1174,6 +1189,13 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
   };
 
   const handleBulkDelete = async () => {
+    // Check authentication first
+    const auth = checkAuth();
+    if (!auth.isAuthenticated) {
+      showNotification('Error: You must be logged in to delete projects', 'error');
+      return;
+    }
+
     if (selectedProjects.length === 0) return;
     
     if (window.confirm(`Delete ${selectedProjects.length} selected projects?`)) {

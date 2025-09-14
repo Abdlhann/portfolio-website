@@ -5,13 +5,13 @@ service cloud.firestore {
     // Allow public read access to projects collection
     match /projects/{document} {
       allow read: if true;
-      allow write: if false; // Only allow writes through admin functions
+      allow write: if true; // Allow all users to write (app has custom auth)
     }
     
     // Allow public read access to other collections if needed
     match /{document=**} {
       allow read: if true;
-      allow write: if false; // Only allow writes through admin functions
+      allow write: if true; // Allow all users to write (app has custom auth)
     }
   }
 }
