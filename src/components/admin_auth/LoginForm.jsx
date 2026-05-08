@@ -2,38 +2,27 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import { Eye, EyeOff } from 'lucide-react';
-
-// In a real application, you would store this securely on a backend server
-// This is just for demonstration purposes
-const ADMIN_CREDENTIALS = {
-  username: import.meta.env.VITE_ADMIN_USERNAME,
-  // This should be a hashed password in production
-  password: import.meta.env.VITE_ADMIN_PASSWORD
-};
+import { auth } from '../../config/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export function LoginForm({ onLogin }) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-      // Set authentication cookie that expires in 24 hours
-      Cookies.set('auth_token', 'admin_authenticated', { expires: 1, path: '/portfolio-website' });
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      Cookies.set('auth_token', userCredential.user.uid, { expires: 1, path: '/portfolio-website' });
       Cookies.set('user_role', 'Admin', { expires: 1, path: '/portfolio-website' });
-      
-      // Call the login handler
       onLogin();
-      
-      // Redirect to upload page with the correct base path
       navigate('/portfolio-website/UploadProject');
-    } else {
+    } catch (error) {
       setError('Invalid credentials');
+      console.error("Error logging in:", error);
     }
   };
 
@@ -52,18 +41,18 @@ export function LoginForm({ onLogin }) {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm space-y-4">
             <div>
-              <label htmlFor="username" className="sr-only">
-                Username
+              <label htmlFor="email" className="sr-only">
+                Email
               </label>
               <input
-                id="username"
-                name="username"
-                type="text"
+                id="email"
+                name="email"
+                type="email"
                 required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Username"
+                placeholder="Email Address"
               />
             </div>
             <div className="relative">

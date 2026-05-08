@@ -4,7 +4,7 @@ export const checkAuth = () => {
   const authToken = Cookies.get('auth_token');
   const userRole = Cookies.get('user_role');
   return {
-    isAuthenticated: authToken === 'admin_authenticated',
+    isAuthenticated: !!authToken,
     role: userRole || ''
   };
 };

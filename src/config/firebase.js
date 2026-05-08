@@ -1,11 +1,11 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getFirestore, serverTimestamp } from "firebase/firestore";
-import { getAnalytics } from "firebase/analytics";
+import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyA6fsvrc_wljjSaYbRz5KxwkxwHlTsc5JA",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "db-portfolio-web.firebaseapp.com",
   projectId: "db-portfolio-web",
   storageBucket: "db-portfolio-web.firebasestorage.app",
@@ -16,6 +16,6 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 export const db = getFirestore(app);
 export { serverTimestamp }; 
+export const auth = getAuth(app);
