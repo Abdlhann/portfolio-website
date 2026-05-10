@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAnalyticsData } from '../utils/analytics';
 import { db, serverTimestamp } from '../config/firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { checkAuth } from './admin_auth/authUtils';

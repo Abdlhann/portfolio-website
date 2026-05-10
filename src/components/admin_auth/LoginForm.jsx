@@ -14,15 +14,39 @@ export function LoginForm({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       Cookies.set('auth_token', userCredential.user.uid, { expires: 1, path: '/portfolio-website' });
+      
       Cookies.set('user_role', 'Admin', { expires: 1, path: '/portfolio-website' });
+      
       onLogin();
-      navigate('/portfolio-website/UploadProject');
+      navigate('/UploadProject');
     } catch (error) {
-      setError('Invalid credentials');
-      console.error("Error logging in:", error);
+      console.error("Firebase Login Error Code:", error.code);
+      console.error("Firebase Login Error Message:", error.message);
+      console.error("Firebase Login Error:", error); 
+      
+      switch (error.code) {
+      case 'auth/invalid-email':
+        setError('Format email tidak valid.');
+        break;
+      case 'auth/user-not-found':
+        setError('Email tidak terdaftar.');
+        break;
+      case 'auth/wrong-password':
+        setError('Password yang Anda masukkan salah.');
+        break;
+      case 'auth/invalid-credential':
+        setError('Email atau Password salah (Credential tidak valid).');
+        break;
+      case 'auth/too-many-requests':
+        setError('Terlalu banyak percobaan login. Silakan coba lagi nanti.');
+        break;
+      default:
+        setError('Terjadi kesalahan saat login. Cek console untuk detail.');
+      }
     }
   };
 

@@ -23,15 +23,15 @@ export function Contact() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <motion.a
-            href="mailto:hyperions004@email.com"
+            href="mailto:anggratr56@email.com"
             className="relative z-[1] bg-[#111] p-6 rounded-2xl shadow-lg hover:shadow-cyan-500/50 transition hover:scale-105 flex items-center space-x-4 border border-cyan-500/20"
             whileHover={{ scale: 1.03 }}
-            title="Send an email to hyperions004@email.com"
+            title="Send an email to anggratr56@email.com"
           >
             <FaEnvelope className="text-4xl text-cyan-400 drop-shadow-neon" />
             <div className="text-left">
               <h3 className="text-lg font-semibold text-cyan-300">Email</h3>
-              <p className="text-gray-400">hyperions004@email.com</p>
+              <p className="text-gray-400">anggratr56@email.com</p>
             </div>
           </motion.a>
 
