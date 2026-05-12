@@ -42,7 +42,7 @@ export function About() {
         {
           icon: <BookOpen size={20} className="text-blue-500" />,
           mobileText: "Mahasiswa TI, suka React & Laravel.",
-          fullText: "Saya adalah mahasiswa semester 6 di <span class='font-semibold text-blue-600'>Universitas Binaniaga Indonesia</span>, Prodi <span class='font-semibold text-blue-700'>Teknologi Informasi</span>. Passion saya ada di pengembangan web modern menggunakan <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>React.Js</span>, <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Laravel</span>, dan tools digital inovatif lainnya."
+          fullText: "Saya adalah mahasiswa semester 8 di <span class='font-semibold text-blue-600'>Universitas Binaniaga Indonesia</span>, Prodi <span class='font-semibold text-blue-700'>Teknologi Informasi</span>. Passion saya ada di pengembangan web modern menggunakan <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>React.Js</span>, <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Laravel</span>, dan tools digital inovatif lainnya."
         },
         {
           icon: <Code size={20} className="text-purple-500" />,
