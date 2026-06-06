@@ -178,7 +178,7 @@ export function About() {
           <Dialog.Panel className="max-w-md w-full mx-auto bg-white dark:bg-zinc-900 rounded-xl shadow-xl p-6 space-y-4">
             <Dialog.Title className="text-xl font-bold text-blue-600">{currentLanguage.modalTitle}</Dialog.Title>
             <div
-              className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed"
+              className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed text-justify"
               dangerouslySetInnerHTML={{ __html: modalContent }}
             />
             <div className="text-right">
@@ -205,7 +205,7 @@ function AboutItem({ icon, mobileText, fullText, openModal, readMore }) {
       </span>
       <div>
         {/* Mobile view */}
-        <div className="block sm:hidden">
+        <div className="block sm:hidden text-justify">
           <span>{mobileText}</span>
           <button
             className="text-blue-400 hover:text-blue-300 underline ml-1 transition-colors"
@@ -217,7 +217,7 @@ function AboutItem({ icon, mobileText, fullText, openModal, readMore }) {
 
         {/* Desktop view */}
         <div
-          className="hidden sm:block"
+          className="hidden sm:block text-justify"
           dangerouslySetInnerHTML={{ __html: fullText }}
         />
       </div>
