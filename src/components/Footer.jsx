@@ -3,7 +3,13 @@ import { FaGithub, FaLinkedin, FaInstagram } from 'react-icons/fa';
 
 export function Footer() {
   return (
-    <footer className="bg-black text-gray-300 py-8 border-t border-white/10">
+    <footer className="relative z-[1] bg-gray-950 text-gray-300 py-12 border-t border-white/10 overflow-hidden">
+      {/* Background Grid Pattern */}
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute inset-0 -z-10 opacity-10 bg-[radial-gradient(circle,rgba(0,0,0,0.05)_1px,transparent_1px)] [background-size:40px_40px] dark:bg-[radial-gradient(circle,rgba(255,255,255,0.05)_1px,transparent_1px)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(transparent_1px,rgba(0,0,0,0.03)_1px)] [background-size:40px_40px] opacity-40" />
+      </div>
+
       <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
         <p className="text-sm">
           &copy; {new Date().getFullYear()} <span className="font-semibold text-purple-400">Anggra.dev</span>. All rights reserved.

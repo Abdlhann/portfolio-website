@@ -14,7 +14,6 @@ const navItems = [
 export function Navbar({ isLoggedIn, role, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
   const [scrollProgress, setScrollProgress] = useState(0);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
@@ -120,16 +119,11 @@ export function Navbar({ isLoggedIn, role, onLogout }) {
       title: 'Anggra.Dev Portfolio',
       url: window.location.href 
     }) },
-    { icon: <Settings size={16} />, label: 'Preferences', action: () => setDarkMode(!darkMode) },
     ...(isLoggedIn ? [{ icon: <LogOut size={16} />, label: 'Logout', action: onLogout }] : []),
   ];
 
   const toggleMenu = () => setMenuOpen(!menuOpen);
   const closeMenu = () => setMenuOpen(false);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
 
   return (
     <>
@@ -289,19 +283,6 @@ export function Navbar({ isLoggedIn, role, onLogout }) {
                 )}
               </AnimatePresence>
             </div>
-
-            {/* Dark Mode Toggle with Animation */}
-            <motion.button 
-              onClick={toggleDarkMode}
-              className="p-2 rounded-full hover:bg-purple-600/20 transition-colors"
-              whileHover={{ scale: 1.1, rotate: 180 }}
-              whileTap={{ scale: 0.9 }}
-              animate={{ rotate: darkMode ? 360 : 0 }}
-              transition={{ duration: 0.3 }}
-              onMouseEnter={playHoverSound}
-            >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </motion.button>
             
             {/* Only show logout button if logged in */}
             {isLoggedIn && (
@@ -331,16 +312,6 @@ export function Navbar({ isLoggedIn, role, onLogout }) {
                 </button>
               </motion.div>
             )}
-            
-            <motion.button 
-              onClick={toggleDarkMode}
-              className="p-2 rounded-full hover:bg-purple-600/20 transition-colors"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onMouseEnter={playHoverSound}
-            >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </motion.button>
             
             <motion.button 
               className="p-1" 
