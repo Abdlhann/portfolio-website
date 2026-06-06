@@ -103,14 +103,20 @@ export function About() {
   return (
     <section
       id="about"
-      className="relative z-[1] py-16 sm:py-24 md:py-32 px-4 md:px-10 bg-black overflow-hidden"
+      className="relative z-[1] py-16 sm:py-24 md:py-32 px-4 md:px-10 bg-gray-950 overflow-hidden"
       style={{ scrollMarginTop: '80px', paddingTop: '120px' }}
     >
-      {/* Floating Background Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-to-br from-blue-300/20 to-purple-300/20 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 -left-48 w-96 h-96 bg-gradient-to-tr from-pink-300/10 to-indigo-300/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 right-1/4 w-80 h-80 bg-gradient-to-tr from-teal-300/10 to-blue-300/10 rounded-full blur-3xl" />
+      {/* Background Glow & Grid Pattern */}
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute inset-0 -z-10 opacity-10 bg-[radial-gradient(circle,rgba(0,0,0,0.05)_1px,transparent_1px)] [background-size:40px_40px] dark:bg-[radial-gradient(circle,rgba(255,255,255,0.05)_1px,transparent_1px)]" />
+
+        {/* Subtle Grid Pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(transparent_1px,rgba(0,0,0,0.03)_1px)] [background-size:40px_40px] opacity-40" />
+
+        {/* Floating Background Elements */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-to-br from-blue-300/10 to-purple-300/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 -left-48 w-96 h-96 bg-gradient-to-tr from-pink-300/5 to-indigo-300/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 right-1/4 w-80 h-80 bg-gradient-to-tr from-teal-300/5 to-blue-300/5 rounded-full blur-3xl" />
       </div>
 
       {/* Lanyard Component - Only shown on desktop */}

@@ -1737,7 +1737,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
                   ${bulkActionMode && selectedProjects.includes(project.id) ? 'ring-2 ring-purple-500 scale-[1.02]' : ''}`}
               >
                 {/* Project Image */}
-                <div className={`${viewMode === 'grid' ? 'h-48' : 'h-48 sm:h-44 sm:w-44 sm:flex-shrink-0'} relative group overflow-hidden`}>
+                <div className={`${viewMode === 'grid' ? 'w-full aspect-video' : 'h-48 sm:h-44 sm:w-44 sm:flex-shrink-0'} relative group overflow-hidden bg-gray-900/50`}>
                   <img
                     src={project.img}
                     alt={project.title}

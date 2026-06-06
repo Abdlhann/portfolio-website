@@ -142,21 +142,12 @@ export function Projects({ addedProjects = [] }) {
   // Open modal with project details
   const openModal = (project) => {
     setSelectedProject(project);
-    // Prevent scrolling when modal is open and store current scroll position
-    const scrollY = window.scrollY;
-    document.body.dataset.scrollY = scrollY; // Store scroll position as data attribute
     document.body.classList.add('modal-open');
-    document.body.style.top = `-${scrollY}px`;
   };
   
   // Close modal
   const closeModal = () => {
-    // Restore scrolling and scroll position when modal is closed
-    const scrollY = document.body.dataset.scrollY || '0';
     document.body.classList.remove('modal-open');
-    document.body.style.top = '';
-    window.scrollTo(0, parseInt(scrollY));
-    delete document.body.dataset.scrollY; // Clean up
     setSelectedProject(null);
   };
 
@@ -278,7 +269,7 @@ export function Projects({ addedProjects = [] }) {
                 whileHover={{ scale: 1.03 }}
                 className={`rounded-2xl overflow-hidden shadow-xl bg-white dark:bg-[#181827] border border-purple-200/30 transition-all hover:shadow-purple-300/50`}
               >
-                <div className="h-48 overflow-hidden relative">
+                <div className="w-full aspect-video overflow-hidden relative bg-gray-900/50">
                   <img
                     src={project.img || '/api/placeholder/400/300'}
                     alt={project.title}
@@ -371,13 +362,14 @@ export function Projects({ addedProjects = [] }) {
             onClick={closeModal}
           >
             <motion.div 
-              className="bg-white dark:bg-[#181827] rounded-xl max-w-lg w-full shadow-2xl overflow-hidden"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-[#181827] rounded-xl max-w-lg w-full shadow-2xl overflow-hidden border border-purple-500/20"
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.4, bounce: 0.2 }}
               onClick={e => e.stopPropagation()}
             >
-              <div className="relative h-48 overflow-hidden">
+              <div className="relative w-full aspect-video overflow-hidden bg-gray-900/50">
                 <img 
                   src={selectedProject.img || '/api/placeholder/400/300'} 
                   alt={selectedProject.title}

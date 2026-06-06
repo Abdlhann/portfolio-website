@@ -6,14 +6,24 @@ export function Contact() {
   return (
     <motion.section
       id="contact"
-      className="relative py-24 px-6 bg-black text-white overflow-hidden"
+      className="relative z-[1] py-24 px-6 bg-gray-950 text-white overflow-hidden"
       style={{ scrollMarginTop: '80px', paddingTop: '120px' }}
       initial={{ opacity: 0, y: 50 }}
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7 }}
     >
-      {/* Neon Background Glow */}
-      <div className="absolute inset-0 before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_center,_#00ffff33,_transparent)] before:blur-2xl before:z-0" />
+      {/* Background Glow & Grid Pattern to match About Me */}
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute inset-0 -z-10 opacity-10 bg-[radial-gradient(circle,rgba(0,0,0,0.05)_1px,transparent_1px)] [background-size:40px_40px] dark:bg-[radial-gradient(circle,rgba(255,255,255,0.05)_1px,transparent_1px)]" />
+
+        {/* Subtle Grid Pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(transparent_1px,rgba(0,0,0,0.03)_1px)] [background-size:40px_40px] opacity-40" />
+
+        {/* Floating Background Elements */}
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-gradient-to-br from-cyan-300/10 to-blue-300/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 -right-48 w-96 h-96 bg-gradient-to-tr from-purple-300/5 to-pink-300/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 left-1/4 w-80 h-80 bg-gradient-to-tr from-green-300/5 to-emerald-300/5 rounded-full blur-3xl" />
+      </div>
 
       <div className="relative z-10 max-w-4xl mx-auto text-center">
         <h2 className="text-4xl font-bold mb-6 text-cyan-400 drop-shadow-neon">Get in Touch</h2>
