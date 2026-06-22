@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   assetsInclude: [ '**/*.glb'],
-  base: '/portfolio-website/',
+  base: '/-portfolio-website/',
   plugins: [
     react(), tailwindcss(),
   ],

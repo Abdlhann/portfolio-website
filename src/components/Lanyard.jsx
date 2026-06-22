@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property */
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Canvas, extend, useFrame } from '@react-three/fiber';
 import { useGLTF, useTexture, Environment, Lightformer } from '@react-three/drei';
 import { BallCollider, CuboidCollider, Physics, RigidBody, useRopeJoint, useSphericalJoint } from '@react-three/rapier';
@@ -8,6 +8,7 @@ import { MeshLineGeometry, MeshLineMaterial } from 'meshline';
 
 import cardGLB from "../assets/lanyard/card.glb";
 import lanyard from "../assets/lanyard/lanyard.png";
+import profileImg from "../assets/projects/project4.jpeg";
 
 import * as THREE from 'three';
 
@@ -41,6 +42,81 @@ function Band({ maxSpeed = 50, minSpeed = 0 }) {
   const segmentProps = { type: 'dynamic', canSleep: true, colliders: false, angularDamping: 4, linearDamping: 4 };
   const { nodes, materials } = useGLTF(cardGLB);
   const texture = useTexture(lanyard);
+  const profileTexture = useTexture(profileImg);
+
+  const cardTexture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    // 2:1 landscape — sisi kiri = depan kartu, sisi kanan = belakang
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // === SISI DEPAN (0,0 → 512,512) ===
+    ctx.fillStyle = '#0a192f';
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Border
+    ctx.strokeStyle = '#64ffda';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(4, 4, 504, 504);
+
+    // Foto profile (atas)
+    const img = profileTexture.image;
+    if (img) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(256, 200, 120, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(img, 136, 80, 240, 240);
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(256, 200, 120, 0, Math.PI * 2);
+      ctx.strokeStyle = '#64ffda';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+
+    // Nama (bawah foto)
+    ctx.fillStyle = '#ccd6f6';
+    ctx.font = 'bold 38px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Abdul Hannan', 256, 370);
+
+    // Role
+    ctx.fillStyle = '#64ffda';
+    ctx.font = '26px Arial';
+    ctx.fillText('Data Scientist', 256, 412);
+
+    // Divider
+    ctx.strokeStyle = '#64ffda';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(60, 432);
+    ctx.lineTo(452, 432);
+    ctx.stroke();
+
+    // Footer
+    ctx.fillStyle = '#8892b0';
+    ctx.font = '20px Arial';
+    ctx.fillText('portfolio', 256, 460);
+
+    // === SISI BELAKANG (512,0 → 1024,512) ===
+    ctx.fillStyle = '#0a192f';
+    ctx.fillRect(512, 0, 512, 512);
+    ctx.strokeStyle = '#64ffda';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(516, 4, 504, 504);
+    ctx.fillStyle = '#64ffda';
+    ctx.font = 'bold 36px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Abdul Hannan', 768, 240);
+    ctx.fillStyle = '#8892b0';
+    ctx.font = '24px Arial';
+    ctx.fillText('Data Scientist', 768, 284);
+
+    return new THREE.CanvasTexture(canvas);
+  }, [profileTexture]);
   const [curve] = useState(() => new THREE.CatmullRomCurve3([new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]));
   const [dragged, drag] = useState(false);
   const [hovered, hover] = useState(false);
@@ -121,7 +197,7 @@ function Band({ maxSpeed = 50, minSpeed = 0 }) {
             onPointerUp={(e) => (e.target.releasePointerCapture(e.pointerId), drag(false))}
             onPointerDown={(e) => (e.target.setPointerCapture(e.pointerId), drag(new THREE.Vector3().copy(e.point).sub(vec.copy(card.current.translation()))))}>
             <mesh geometry={nodes.card.geometry}>
-              <meshPhysicalMaterial map={materials.base.map} map-anisotropy={16} clearcoat={1} clearcoatRoughness={0.15} roughness={0.9} metalness={0.8} />
+              <meshPhysicalMaterial map={cardTexture} map-anisotropy={16} clearcoat={1} clearcoatRoughness={0.15} roughness={0.3} metalness={0.1} />
             </mesh>
             <mesh geometry={nodes.clip.geometry} material={materials.metal} material-roughness={0.3} />
             <mesh geometry={nodes.clamp.geometry} material={materials.metal} />

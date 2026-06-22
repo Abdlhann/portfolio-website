@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Dumbbell, Code, BookOpen, Puzzle, Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Dialog } from '@headlessui/react';
-import Lanyard from './Lanyard'
+import DataVisualizer from './DataVisualizer'
 
 export function About() {
   const [isOpen, setIsOpen] = useState(false);
   const [modalContent, setModalContent] = useState('');
-  const [language, setLanguage] = useState('id'); // 'id' for Indonesian, 'en' for English
+  const [language, setLanguage] = useState('en'); // 'en' for English (default), 'id' for Indonesian
   const [isDesktop, setIsDesktop] = useState(false);
 
   // Handle screen size detection
@@ -41,23 +41,23 @@ export function About() {
       aboutItems: [
         {
           icon: <BookOpen size={20} className="text-blue-500" />,
-          mobileText: "Mahasiswa TI, suka React & Laravel.",
-          fullText: "Saya adalah mahasiswa semester 8 di <span class='font-semibold text-blue-600'>Universitas Binaniaga Indonesia</span>, Prodi <span class='font-semibold text-blue-700'>Teknologi Informasi</span>. Passion saya ada di pengembangan web modern menggunakan <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>React.Js</span>, <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Laravel</span>, dan tools digital inovatif lainnya."
+          mobileText: "Lulusan Sistem Informasi, fokus di Data & AI.",
+          fullText: "Halo, saya Abdul Hannan, lulusan Sistem Informasi dari <span class='font-semibold text-blue-600'>Universitas Binaniaga Indonesia</span> dengan minat yang kuat pada <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Data Analytics</span>, <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Data Science</span>, <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Artificial Intelligence (AI)</span>, dan Web Development. Saya menikmati proses mengubah data menjadi insight yang bermanfaat serta membangun solusi digital yang dapat membantu pengambilan keputusan dan meningkatkan efisiensi bisnis."
         },
         {
           icon: <Code size={20} className="text-purple-500" />,
-          mobileText: "Belajar dari bug dan eksperimen.",
-          fullText: "Saya percaya bahwa proses belajar tidak pernah berhenti. Di setiap eksperimen, bug, dan baris kode yang ditulis, saya melihat peluang untuk bertumbuh lebih baik. Bagi saya, kegagalan adalah bagian dari proses memahami, <span class='italic font-medium'>bukan alasan untuk berhenti</span>."
+          mobileText: "Fokus di analisis data, ML, dan web dev.",
+          fullText: "Fokus saya saat ini adalah mengembangkan kemampuan dalam analisis data, machine learning, visualisasi data, serta pengembangan aplikasi berbasis web. Saya memiliki pengalaman mengerjakan berbagai proyek menggunakan <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Python</span>, <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>SQL</span>, <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Tableau</span>, dan teknologi web modern untuk mengolah data, membangun model prediktif, serta menyajikan informasi yang mudah dipahami oleh pengguna maupun stakeholder."
         },
         {
           icon: <Dumbbell size={20} className="text-pink-500" />,
-          mobileText: "Gym bikin disiplin dan progresif.",
-          fullText: "Selain dunia teknologi, saya menemukan keseimbangan lewat latihan di gym. Disiplin, konsistensi, dan semangat progres yang saya pelajari di sana sangat selaras dengan dunia coding. Sama seperti membangun sistem, membangun diri juga butuh waktu, iterasi, dan semangat pantang menyerah."
+          mobileText: "Gemar membaca dan berolahraga.",
+          fullText: "Saya memiliki rasa ingin tahu yang tinggi dan senang mempelajari teknologi baru. Di luar aktivitas teknis, saya gemar membaca dan berolahraga karena keduanya membantu saya menjaga keseimbangan, memperluas wawasan, serta membangun disiplin dalam kehidupan sehari-hari."
         },
         {
           icon: <Puzzle size={20} className="text-blue-400" />,
-          mobileText: "Memecahkan masalah secara metodis.",
-          fullText: "Saya mendekati masalah dengan cara metodis, memecahnya menjadi komponen yang dapat dikelola untuk mengembangkan solusi yang efektif. Analisis yang cermat dan pemecahan masalah yang sistematis adalah kunci dalam pendekatan saya."
+          mobileText: "Berpikir analitis dan sistematis.",
+          fullText: "Dalam menghadapi tantangan, saya terbiasa berpikir secara analitis dan sistematis. Saya menikmati proses memahami permasalahan, mengeksplorasi berbagai kemungkinan solusi, dan menerapkan pendekatan yang tepat berdasarkan data dan kebutuhan yang ada. Bagi saya, setiap proyek adalah kesempatan untuk terus belajar, berkembang, dan menciptakan dampak yang positif melalui teknologi."
         }
       ],
       modalTitle: "Detail",
@@ -69,23 +69,23 @@ export function About() {
       aboutItems: [
         {
           icon: <BookOpen size={20} className="text-blue-500" />,
-          mobileText: "IT Student, passionate about React & Laravel.",
-          fullText: "I'm a 6th semester student at <span class='font-semibold text-blue-600'>Universitas Binaniaga Indonesia</span>, majoring in <span class='font-semibold text-blue-700'>Information Technology</span>. My passion lies in modern web development using <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>React.Js</span>, <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Laravel</span>, and other innovative digital tools."
+          mobileText: "Information Systems graduate, focused on Data & AI.",
+          fullText: "Hi, I'm Abdul Hannan, an Information Systems graduate from <span class='font-semibold text-blue-600'>Universitas Binaniaga Indonesia</span> with a strong interest in <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Data Analytics</span>, <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Data Science</span>, <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Artificial Intelligence (AI)</span>, and Web Development. I enjoy transforming data into actionable insights and building digital solutions that support decision-making and improve business efficiency."
         },
         {
           icon: <Code size={20} className="text-purple-500" />,
-          mobileText: "Learning from bugs and experiments.",
-          fullText: "I believe the learning process never stops. In every experiment, bug, and line of code written, I see opportunities to grow better. For me, failure is part of the process of understanding, <span class='italic font-medium'>not a reason to stop</span>."
+          mobileText: "Focused on data analysis, ML, and web dev.",
+          fullText: "My current focus is on developing skills in data analysis, machine learning, data visualization, and web application development. I have experience working on various projects using <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Python</span>, <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>SQL</span>, <span class='px-1 mx-1 bg-pink-50 text-pink-600 font-medium rounded'>Tableau</span>, and modern web technologies to process data, build predictive models, and present information that is easily understood by both users and stakeholders."
         },
         {
           icon: <Dumbbell size={20} className="text-pink-500" />,
-          mobileText: "Gym builds discipline and progression.",
-          fullText: "Besides the world of technology, I find balance through training at the gym. The discipline, consistency, and spirit of progress I learn there are very much in line with the world of coding. Just like building systems, building oneself also takes time, iteration, and a spirit of perseverance."
+          mobileText: "Passionate about reading and sports.",
+          fullText: "I have a strong curiosity and enjoy learning new technologies. Outside of technical work, I love reading and exercising, as both help me maintain balance, broaden my perspective, and build discipline in my daily life."
         },
         {
           icon: <Puzzle size={20} className="text-blue-400" />,
-          mobileText: "Solving problems methodically.",
-          fullText: "I approach problems methodically, breaking them down into manageable components to develop effective solutions. Careful analysis and systematic problem-solving are key to my approach."
+          mobileText: "Analytical and systematic thinker.",
+          fullText: "When facing challenges, I am accustomed to thinking analytically and systematically. I enjoy the process of understanding problems, exploring various possible solutions, and applying the right approach based on data and existing needs. For me, every project is an opportunity to keep learning, growing, and creating positive impact through technology."
         }
       ],
       modalTitle: "Details",
@@ -103,7 +103,7 @@ export function About() {
   return (
     <section
       id="about"
-      className="relative z-[1] py-16 sm:py-24 md:py-32 px-4 md:px-10 bg-gray-950 overflow-hidden"
+      className="relative z-[1] py-16 sm:py-24 md:py-32 px-4 md:px-10 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 overflow-hidden"
       style={{ scrollMarginTop: '80px', paddingTop: '120px' }}
     >
       {/* Background Glow & Grid Pattern */}
@@ -114,15 +114,15 @@ export function About() {
         <div className="absolute inset-0 bg-[radial-gradient(transparent_1px,rgba(0,0,0,0.03)_1px)] [background-size:40px_40px] opacity-40" />
 
         {/* Floating Background Elements */}
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-to-br from-blue-300/10 to-purple-300/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 -left-48 w-96 h-96 bg-gradient-to-tr from-pink-300/5 to-indigo-300/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 right-1/4 w-80 h-80 bg-gradient-to-tr from-teal-300/5 to-blue-300/5 rounded-full blur-3xl" />
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-to-br from-indigo-200/40 to-violet-200/40 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 -left-48 w-96 h-96 bg-gradient-to-tr from-cyan-200/30 to-indigo-200/30 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 right-1/4 w-80 h-80 bg-gradient-to-tr from-violet-200/30 to-cyan-200/30 rounded-full blur-3xl" />
       </div>
 
-      {/* Lanyard Component - Only shown on desktop */}
+      {/* Data Visualizer - Only shown on desktop */}
       {isDesktop && (
-        <div className="w-full h-[400px] relative">
-          <Lanyard position={[0, 0, 20]} gravity={[0, -40, 0]} />
+        <div className="w-full max-w-2xl mx-auto mb-8">
+          <DataVisualizer />
         </div>
       )}
 
@@ -130,21 +130,21 @@ export function About() {
       <div className="max-w-4xl mx-auto relative z-10">
         {/* Header with Language Toggle */}
         <div className="text-center mb-10 sm:mb-16 relative">
-          <h2 className="inline-block text-3xl sm:text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 text-transparent bg-clip-text mb-4">
+          <h2 className="inline-block text-3xl sm:text-5xl font-bold bg-gradient-to-r from-indigo-600 via-violet-600 to-cyan-500 text-transparent bg-clip-text mb-4">
             {currentLanguage.title}
           </h2>
-          <div className="h-1 w-24 mx-auto bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 rounded-full" />
+          <div className="h-1 w-24 mx-auto bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500 rounded-full" />
 
           {/* Language Toggle Button */}
           <motion.button
             onClick={toggleLanguage}
-            className="absolute top-0 right-0 sm:right-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full p-2 text-white flex items-center space-x-1 transition-all duration-300"
+            className="absolute top-0 right-0 sm:right-4 bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 rounded-full px-3 py-1.5 text-white flex items-center space-x-1.5 transition-all duration-300 shadow-md shadow-indigo-200/50"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             title={language === 'id' ? "Switch to English" : "Ganti ke Bahasa Indonesia"}
           >
-            <Globe size={18} />
-            <span className="text-xs font-medium">{language === 'id' ? 'EN' : 'ID'}</span>
+            <Globe size={16} />
+            <span className="text-xs font-semibold">{language === 'id' ? 'EN' : 'ID'}</span>
           </motion.button>
         </div>
 
@@ -154,9 +154,9 @@ export function About() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
           viewport={{ once: true }}
-          className="bg-white/10 backdrop-blur-xl border border-[rgb(0,128,255,0.5)] shadow-xl rounded-3xl p-5 sm:p-8 md:p-12"
+          className="bg-white/70 backdrop-blur-xl border border-indigo-200/50 shadow-xl shadow-indigo-100/50 rounded-3xl p-5 sm:p-8 md:p-12"
         >
-          <div className="space-y-6 sm:space-y-8 text-white text-sm sm:text-base md:text-lg leading-relaxed">
+          <div className="space-y-6 sm:space-y-8 text-slate-700 text-sm sm:text-base md:text-lg leading-relaxed">
             {currentLanguage.aboutItems.map((item, index) => (
               <AboutItem
                 key={index}
@@ -176,14 +176,14 @@ export function About() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="max-w-md w-full mx-auto bg-white dark:bg-zinc-900 rounded-xl shadow-xl p-6 space-y-4">
-            <Dialog.Title className="text-xl font-bold text-blue-600">{currentLanguage.modalTitle}</Dialog.Title>
+            <Dialog.Title className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">{currentLanguage.modalTitle}</Dialog.Title>
             <div
               className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed text-justify"
               dangerouslySetInnerHTML={{ __html: modalContent }}
             />
             <div className="text-right">
               <button
-                className="text-sm text-white bg-blue-600 px-4 py-1.5 rounded-md hover:bg-blue-700 transition-colors"
+                className="text-sm text-white bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-1.5 rounded-md hover:from-indigo-600 hover:to-violet-600 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
                 {currentLanguage.closeButton}
@@ -208,7 +208,7 @@ function AboutItem({ icon, mobileText, fullText, openModal, readMore }) {
         <div className="block sm:hidden text-justify">
           <span>{mobileText}</span>
           <button
-            className="text-blue-400 hover:text-blue-300 underline ml-1 transition-colors"
+            className="text-indigo-500 hover:text-indigo-700 underline ml-1 transition-colors"
             onClick={() => openModal(fullText)}
           >
             {readMore}

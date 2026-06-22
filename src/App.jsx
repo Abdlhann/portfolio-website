@@ -13,9 +13,13 @@ import { LoginForm } from './components/admin_auth/LoginForm';
 import { checkAuth, clearAuth } from './components/admin_auth/authUtils';
 import { trackPageView } from './utils/analytics';
 import { Footer } from './components/Footer.jsx';
-import { db } from './config/firebase';
+import { db, auth } from './config/firebase';
 import { collection, getDocs } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import './App.css';
+
+// Admin email - only this email can access the upload page
+const ADMIN_EMAIL = 'hannan335@gmail.com';
 
 // Add GA4 script to head
 const addGA4Script = () => {
@@ -49,6 +53,8 @@ function App() {
 function AppContent() {
   const [projects, setProjects] = useState([]);
   const [firebaseProjects, setFirebaseProjects] = useState([]);
+  const [firebaseUser, setFirebaseUser] = useState(null); // Real Firebase auth state
+  const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState(() => {
     const auth = checkAuth();
     return {
@@ -89,6 +95,24 @@ function AppContent() {
     fetchProjects();
   }, []);
 
+  // Listen to Firebase Auth state changes for real-time security
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseAuthUser) => {
+      setFirebaseUser(firebaseAuthUser);
+      setAuthLoading(false);
+
+      // If Firebase says user is logged out but cookie says logged in -> clear cookies
+      if (!firebaseAuthUser) {
+        const cookieAuth = checkAuth();
+        if (cookieAuth.isAuthenticated) {
+          clearAuth();
+          setUser({ isLoggedIn: false, role: '' });
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Track page views
   useEffect(() => {
     trackPageView();
@@ -102,9 +126,15 @@ function AppContent() {
     });
   };
   
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+    } catch (err) {
+      console.error('Firebase signOut error:', err);
+    }
     clearAuth();
     setUser({ isLoggedIn: false, role: '' });
+    setFirebaseUser(null);
     navigate('/');
   };
   
@@ -141,6 +171,7 @@ function AppContent() {
         <Navbar
           isLoggedIn={user.isLoggedIn}
           role={user.role}
+          isFirebaseAuthenticated={!!firebaseUser && firebaseUser.email === ADMIN_EMAIL}
           onLogout={handleLogout}
         />
       )}
@@ -167,7 +198,11 @@ function AppContent() {
         <Route
           path="/login"
           element={
-            user.isLoggedIn && user.role === 'Admin' ? (
+            authLoading ? (
+              <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+              </div>
+            ) : firebaseUser && firebaseUser.email === ADMIN_EMAIL ? (
               <Navigate to="/UploadProject" replace />
             ) : (
               <LoginForm onLogin={handleLogin} />
@@ -178,7 +213,11 @@ function AppContent() {
         <Route
           path="/UploadProject"
           element={
-            user.isLoggedIn && user.role === 'Admin' ? (
+            authLoading ? (
+              <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+              </div>
+            ) : firebaseUser && firebaseUser.email === ADMIN_EMAIL ? (
               <UploadProject 
                 onAddProject={handleAddProject} 
                 isAdmin={true}

@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaGithub, FaExternalLinkAlt, FaInfoCircle, FaTag } from 'react-icons/fa';
-import { IoClose } from 'react-icons/io5';
+import { IoClose, IoChevronBack, IoChevronForward } from 'react-icons/io5';
+import { FaImages } from 'react-icons/fa';
 import project1 from '../assets/projects/Portfolio.png';
 import project2 from '../assets/projects/project2.jpeg';
 import project3 from '../assets/projects/project3.jpeg';
 import { db } from '../config/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 
-// Default projectsF
-const defaultProjects = [
+// Default projects - used only as fallback when Firebase has no projects yet
+const fallbackProjects = [
   {
     title: 'Portfolio Web - React',
     desc: 'Solusi portfolio interaktif yang mengatasi masalah presentasi skill yang statis. Dibangun dengan React.js & TailwindCSS untuk responsivitas optimal di semua perangkat, dengan animasi yang meningkatkan user engagement dan teknik lazy loading untuk kecepatan akses.',
@@ -45,6 +46,7 @@ const animationVariants = [
 
 export function Projects({ addedProjects = [] }) {
   const [selectedProject, setSelectedProject] = useState(null);
+  const [modalImageIndex, setModalImageIndex] = useState(0);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTag, setActiveTag] = useState(null);
@@ -52,10 +54,10 @@ export function Projects({ addedProjects = [] }) {
   
   // Define preset tech stack tags
   const techStackTags = [
-    'HTML', 'CSS', 'JavaScript', 'TypeScript', 'React', 'Vue', 'Angular', 
-    'Node.js', 'Express', 'MongoDB', 'Firebase', 'MySQL', 'Python', 'Django', 
-    'Flutter', 'Dart', 'Git', 'Swift', 'Kotlin', 'Java', 'PHP', 'Laravel',
-    'TailwindCSS', 'Bootstrap', 'MaterialUI', 'Arduino', 'MQTT'
+    'Python', 'Google Colab', 'Kaggle', 'Tableau', 'Excel',
+    'HTML', 'CSS', 'JavaScript', 'React', 
+    'Node.js', 'Express', 'Firebase', 'MySQL', 'PHP', 'Laravel',
+    'Git', 'Kotlin', 'TailwindCSS', 'Bootstrap', 'MaterialUI'
   ];
   
   // Fetch projects from Firebase
@@ -77,26 +79,24 @@ export function Projects({ addedProjects = [] }) {
           }
         });
         
-        // Add default project tags to the mix
-        defaultProjects.forEach(project => {
-          if (project.tags && Array.isArray(project.tags)) {
-            project.tags.forEach(tag => tags.add(tag));
-          }
-        });
-        
         setAllTags(Array.from(tags));
         
-        // Optimize projects order: featured first, then newest
+        // Optimize projects order: featured first, then by custom order field
         const optimizedProjects = [...projectsData].sort((a, b) => {
           // First sort by featured status
           if (a.featured !== b.featured) {
             return a.featured ? -1 : 1;
           }
           
-          // Then by creation date (newest first)
+          // Then by custom order (lower = first), fallback to creation date
+          const orderA = a.order !== undefined && a.order !== null ? a.order : 999;
+          const orderB = b.order !== undefined && b.order !== null ? b.order : 999;
+          if (orderA !== orderB) return orderA - orderB;
+          
+          // Fallback: sort by creation date (newest first)
           const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return dateB - dateA;
+          return dateA - dateB;
         });
         
         setProjects(optimizedProjects);
@@ -120,10 +120,10 @@ export function Projects({ addedProjects = [] }) {
     fetchProjects();
   }, []);
   
-  // Combine default projects with any added projects and Firebase projects
-  const combinedProjects = [...defaultProjects, ...projects];
+  // Use Firebase projects only, fallback to defaults if empty
+  const combinedProjects = projects.length > 0 ? projects : fallbackProjects;
   
-  // Sort all projects by createdAt (if needed)
+  // Sort all projects by custom order
   const allProjects = activeTag 
     ? combinedProjects
         .filter(project => project.tags && Array.isArray(project.tags) && project.tags.includes(activeTag))
@@ -133,15 +133,25 @@ export function Projects({ addedProjects = [] }) {
           return a.featured ? -1 : 1;
         }
         
-        // Then by creation date (oldest first - change to match your preferred order)
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateA - dateB; // This sorts oldest first - change to dateB - dateA for newest first
+        // Then by custom order (lower = first)
+        const orderA = a.order !== undefined && a.order !== null ? a.order : 999;
+        const orderB = b.order !== undefined && b.order !== null ? b.order : 999;
+        return orderA - orderB;
       });
   
+  // Get images array from project (backward compatible with single img field)
+  const getProjectImages = (project) => {
+    if (project.images && Array.isArray(project.images) && project.images.length > 0) {
+      return project.images;
+    }
+    if (project.img) return [project.img];
+    return ['/api/placeholder/400/300'];
+  };
+
   // Open modal with project details
   const openModal = (project) => {
     setSelectedProject(project);
+    setModalImageIndex(0);
     document.body.classList.add('modal-open');
   };
   
@@ -149,12 +159,26 @@ export function Projects({ addedProjects = [] }) {
   const closeModal = () => {
     document.body.classList.remove('modal-open');
     setSelectedProject(null);
+    setModalImageIndex(0);
+  };
+
+  // Navigate images in modal
+  const nextImage = (e) => {
+    e.stopPropagation();
+    const images = getProjectImages(selectedProject);
+    setModalImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = (e) => {
+    e.stopPropagation();
+    const images = getProjectImages(selectedProject);
+    setModalImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
   return (
     <section
       id="projects"
-      className="relative z-[1] py-28 px-4 bg-gray-950 overflow-hidden"
+      className="relative z-[1] py-28 px-4 bg-gradient-to-br from-indigo-50 via-white to-violet-50 overflow-hidden"
       style={{ scrollMarginTop: '80px', paddingTop: '120px' }}
     >
       {/* Background Glow & Grid Pattern */}
@@ -173,7 +197,7 @@ export function Projects({ addedProjects = [] }) {
         viewport={{ once: true }}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <h2 className="text-3xl md:text-4xl font-extrabold text-center text-gray-800 dark:text-white mb-12">
+        <h2 className="text-3xl md:text-4xl font-extrabold text-center bg-gradient-to-r from-indigo-600 via-violet-600 to-cyan-500 bg-clip-text text-transparent mb-12">
           Recent Projects
         </h2>
 
@@ -184,7 +208,7 @@ export function Projects({ addedProjects = [] }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, staggerChildren: 0.1 }}
         >
-          <div className="absolute inset-0 bg-gray-900/20 dark:bg-purple-900/10 filter blur-xl rounded-full -z-10 scale-75 opacity-60" />
+          <div className="absolute inset-0 bg-indigo-100/20 filter blur-xl rounded-full -z-10 scale-75 opacity-60" />
           
           {/* Mobile Scrollable Container */}
           <div className="overflow-x-auto pb-4 md:pb-0 hide-scrollbar">
@@ -193,16 +217,16 @@ export function Projects({ addedProjects = [] }) {
                 onClick={() => setActiveTag(null)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative overflow-hidden group ${
                   activeTag === null
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/30 scale-105'
-                    : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:scale-105 hover:shadow-md duration-300'
+                    ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-200/50 scale-105'
+                    : 'bg-white text-slate-600 hover:bg-indigo-50 hover:scale-105 hover:shadow-md duration-300 border border-indigo-100'
                 }`}
                 whileHover={{ scale: activeTag === null ? 1.05 : 1.1 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <span className="relative z-10">All</span>
                 {activeTag === null && (
-                  <motion.span 
-                    className="absolute inset-0 bg-gradient-to-r from-purple-600/50 to-indigo-600/50 -z-0"
+                  <motion.span
+                    className="absolute inset-0 bg-gradient-to-r from-indigo-500/50 to-violet-500/50 -z-0"
                     initial={{ x: '-100%' }}
                     animate={{ x: '100%' }}
                     transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
@@ -223,10 +247,10 @@ export function Projects({ addedProjects = [] }) {
                     onClick={() => setActiveTag(tag)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative overflow-hidden group ${
                       activeTag === tag
-                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/30 scale-105'
-                        : tagExists 
-                          ? 'bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:scale-105 hover:shadow-md duration-300'
-                          : 'bg-gray-800/40 text-gray-400 cursor-default'
+                        ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-200/50 scale-105'
+                        : tagExists
+                          ? 'bg-white text-slate-600 hover:bg-indigo-50 hover:scale-105 hover:shadow-md duration-300 border border-indigo-100'
+                          : 'bg-white/50 text-slate-400 cursor-default border border-slate-100'
                     }`}
                     whileHover={{ scale: tagExists ? (activeTag === tag ? 1.05 : 1.1) : 1 }}
                     whileTap={{ scale: tagExists ? 0.95 : 1 }}
@@ -238,8 +262,8 @@ export function Projects({ addedProjects = [] }) {
                   >
                     <span className="relative z-10">{tag}</span>
                     {tagExists && activeTag === tag && (
-                      <motion.span 
-                        className="absolute inset-0 bg-gradient-to-r from-purple-600/50 to-indigo-600/50 -z-0"
+                      <motion.span
+                        className="absolute inset-0 bg-gradient-to-r from-indigo-500/50 to-violet-500/50 -z-0"
                         initial={{ x: '-100%' }}
                         animate={{ x: '100%' }}
                         transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
@@ -254,7 +278,7 @@ export function Projects({ addedProjects = [] }) {
         
         {loading ? (
           <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
           </div>
         ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
@@ -267,19 +291,25 @@ export function Projects({ addedProjects = [] }) {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: i * 0.2, ease: "easeOut" }}
                 whileHover={{ scale: 1.03 }}
-                className={`rounded-2xl overflow-hidden shadow-xl bg-white dark:bg-[#181827] border border-purple-200/30 transition-all hover:shadow-purple-300/50`}
+                onClick={() => openModal(project)}
+                className={`rounded-2xl overflow-hidden shadow-md bg-white border border-indigo-100 transition-all hover:shadow-indigo-200/50 cursor-pointer`}
               >
                 <div className="w-full aspect-video overflow-hidden relative bg-gray-900/50">
                   <img
-                    src={project.img || '/api/placeholder/400/300'}
+                    src={getProjectImages(project)[0]}
                     alt={project.title}
                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                   />
+                  {getProjectImages(project).length > 1 && (
+                    <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                      <FaImages size={10} /> {getProjectImages(project).length}
+                    </div>
+                  )}
                 </div>
                 <div className="p-5 flex flex-col justify-between h-56">
                   <div>
-                    <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-400 mb-2">{project.title}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 h-[4.5em]">{project.desc}</p>
+                    <h3 className="text-xl font-semibold text-indigo-600 mb-2">{project.title}</h3>
+                    <p className="text-sm text-slate-500 line-clamp-3 h-[4.5em]">{project.desc}</p>
                       
                       {/* Display Tags */}
                       {project.tags && Array.isArray(project.tags) && project.tags.length > 0 && (
@@ -287,7 +317,7 @@ export function Projects({ addedProjects = [] }) {
                           {project.tags.map((tag, index) => (
                             <span 
                               key={index} 
-                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700"
                             >
                               <FaTag className="mr-1 text-[0.6rem]" />
                               {tag}
@@ -298,7 +328,7 @@ export function Projects({ addedProjects = [] }) {
                       
                     <button 
                       onClick={() => openModal(project)}
-                      className="mt-2 text-xs flex items-center gap-1 text-purple-500 hover:text-purple-700 transition-colors"
+                      className="mt-2 text-xs flex items-center gap-1 text-indigo-500 hover:text-indigo-700 transition-colors"
                     >
                       <FaInfoCircle /> Read more
                     </button>
@@ -308,7 +338,8 @@ export function Projects({ addedProjects = [] }) {
                       href={project.github}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-300 hover:text-purple-800 dark:hover:text-purple-100 transition"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 transition"
                     >
                       <FaGithub /> GitHub
                     </a>
@@ -316,7 +347,8 @@ export function Projects({ addedProjects = [] }) {
                       href={project.demo}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-300 hover:text-purple-800 dark:hover:text-purple-100 transition"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 transition"
                     >
                       <FaExternalLinkAlt /> Live Demo
                     </a>
@@ -331,14 +363,14 @@ export function Projects({ addedProjects = [] }) {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              <div className="bg-gray-800/80 p-8 rounded-2xl max-w-md mx-auto">
-                <h3 className="text-xl font-semibold text-purple-400 mb-4">No Projects Found</h3>
-                <p className="text-gray-300 mb-4">
-                  Currently there are no projects available with the tag <span className="text-purple-300 font-semibold">{activeTag}</span>.
+              <div className="bg-white p-8 rounded-2xl max-w-md mx-auto shadow-md border border-indigo-100">
+                <h3 className="text-xl font-semibold text-indigo-600 mb-4">No Projects Found</h3>
+                <p className="text-slate-500 mb-4">
+                  Currently there are no projects available with the tag <span className="text-indigo-500 font-semibold">{activeTag}</span>.
                 </p>
                 <motion.button
                   onClick={() => setActiveTag(null)}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-violet-500 text-white rounded-lg hover:from-indigo-600 hover:to-violet-600 transition-colors"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
@@ -353,37 +385,83 @@ export function Projects({ addedProjects = [] }) {
       
       {/* Project Details Modal */}
       <AnimatePresence>
-        {selectedProject && (
+        {selectedProject && (() => {
+          const images = getProjectImages(selectedProject);
+          return (
           <motion.div 
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closeModal}
           >
             <motion.div 
-              className="bg-white dark:bg-[#181827] rounded-xl max-w-lg w-full shadow-2xl overflow-hidden border border-purple-500/20"
+              className="bg-white rounded-xl max-w-2xl w-full shadow-xl overflow-hidden border border-indigo-100 mb-8"
               initial={{ scale: 0.95, y: 15, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.95, y: 15, opacity: 0 }}
               transition={{ type: "spring", duration: 0.4, bounce: 0.2 }}
               onClick={e => e.stopPropagation()}
             >
+              {/* Image Carousel */}
               <div className="relative w-full aspect-video overflow-hidden bg-gray-900/50">
                 <img 
-                  src={selectedProject.img || '/api/placeholder/400/300'} 
-                  alt={selectedProject.title}
+                  src={images[modalImageIndex]} 
+                  alt={`${selectedProject.title} - ${modalImageIndex + 1}`}
                   className="w-full h-full object-cover" 
                 />
+                
+                {/* Close button */}
                 <button 
                   onClick={closeModal}
-                  className="absolute top-3 right-3 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 transition-colors"
+                  className="absolute top-3 right-3 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 transition-colors z-10"
                 >
                   <IoClose size={20} />
                 </button>
+
+                {/* Navigation arrows (only if multiple images) */}
+                {images.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevImage}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 transition-colors"
+                    >
+                      <IoChevronBack size={20} />
+                    </button>
+                    <button
+                      onClick={nextImage}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 transition-colors"
+                    >
+                      <IoChevronForward size={20} />
+                    </button>
+                    {/* Image counter */}
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1 rounded-full">
+                      {modalImageIndex + 1} / {images.length}
+                    </div>
+                  </>
+                )}
               </div>
+
+              {/* Thumbnails (only if multiple images) */}
+              {images.length > 1 && (
+                <div className="flex gap-2 p-3 overflow-x-auto bg-gray-50">
+                  {images.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={(e) => { e.stopPropagation(); setModalImageIndex(idx); }}
+                      className={`flex-shrink-0 w-16 h-12 rounded-lg overflow-hidden border-2 transition-all ${
+                        idx === modalImageIndex ? 'border-indigo-500 scale-105' : 'border-transparent opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={img} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Project Details */}
               <div className="p-6">
-                <h3 className="text-2xl font-bold text-purple-700 dark:text-purple-400 mb-4">
+                <h3 className="text-2xl font-bold text-indigo-600 mb-4">
                   {selectedProject.title}
                 </h3>
                 
@@ -393,7 +471,7 @@ export function Projects({ addedProjects = [] }) {
                     {selectedProject.tags.map((tag, index) => (
                       <span 
                         key={index} 
-                        className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
+                        className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-700"
                       >
                         <FaTag className="mr-1 text-[0.6rem]" />
                         {tag}
@@ -402,7 +480,7 @@ export function Projects({ addedProjects = [] }) {
                   </div>
                 )}
                 
-                <p className="text-gray-700 dark:text-gray-200 mb-6">
+                <p className="text-slate-600 mb-6 leading-relaxed whitespace-pre-line">
                   {selectedProject.desc}
                 </p>
                 <div className="flex justify-between">
@@ -410,7 +488,7 @@ export function Projects({ addedProjects = [] }) {
                     href={selectedProject.github}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white rounded-lg transition-colors"
                   >
                     <FaGithub /> GitHub
                   </a>
@@ -418,7 +496,7 @@ export function Projects({ addedProjects = [] }) {
                     href={selectedProject.demo}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white rounded-lg transition-colors"
                   >
                     <FaExternalLinkAlt /> Live Demo
                   </a>
@@ -426,7 +504,8 @@ export function Projects({ addedProjects = [] }) {
               </div>
             </motion.div>
           </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
     </section>
   );

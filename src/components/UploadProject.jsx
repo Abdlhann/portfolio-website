@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, serverTimestamp } from '../config/firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { checkAuth } from './admin_auth/authUtils';
 
 /**
@@ -32,14 +32,14 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
   // State to manage projects and new project details
   const [projects, setProjects] = useState([]);
   const [projectHistory, setProjectHistory] = useState([]);
-  const [newImage, setNewImage] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState('');
+  const [newImages, setNewImages] = useState([]); // Array of File objects
+  const [previewUrls, setPreviewUrls] = useState([]); // Array of object URLs
   const [showModal, setShowModal] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
   const [editIndex, setEditIndex] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState('newest');
+    const [sortOrder, setSortOrder] = useState('custom');
   // New states for enhanced features
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [showImportModal, setShowImportModal] = useState(false);
@@ -56,8 +56,6 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
   const [aiPrompt, setAiPrompt] = useState('');
   const [projectStats, setProjectStats] = useState(null);
   const [expandedEntry, setExpandedEntry] = useState(null);
-  const [visitorStats, setVisitorStats] = useState(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(false);
 
   const [newProject, setNewProject] = useState({
     title: '',
@@ -77,12 +75,10 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
       try {
         const querySnapshot = await getDocs(collection(db, "projects"));
         const projectsData = querySnapshot.docs.map(doc => {
-          // Selalu pastikan ID dokumen digunakan
           const data = doc.data();
           return {
             ...data,
-            id: doc.id, // Selalu gunakan doc.id dari Firestore
-            // Convert server timestamps to ISO string for local use if needed
+            id: doc.id,
             createdAt: data.createdAt instanceof Date ? data.createdAt.toISOString() : 
                        data.createdAt?.toDate?.() ? data.createdAt.toDate().toISOString() : 
                        data.createdAt || new Date().toISOString(),
@@ -92,91 +88,41 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
           };
         });
         
-        // Log data to help with debugging
         console.log("Projects loaded from Firestore:", projectsData.length);
-        console.log("Sample project data:", projectsData.length > 0 ? projectsData[0] : "No projects");
-        
         setProjects(projectsData);
       } catch (error) {
-        console.error("Error loading data from Firestore:", error);
-        // Handle BloomFilter errors gracefully
-        if (error.name === "BloomFilterError") {
-          console.warn("Ignoring BloomFilter error, non-critical for app function");
-        } else {
-        showNotification('Error loading projects from database', 'error');
+        console.error("Error loading projects from Firestore:", error);
+        if (error.name !== "BloomFilterError") {
+          showNotification(`DB Error [${error.code || error.name}]: ${error.message}`, 'error');
         }
       }
     };
 
     fetchProjects();
-    
-    // Set up a listener for Firestore changes to keep data in sync
-    const unsubscribe = onSnapshot(
-      collection(db, "projects"),
-      (snapshot) => {
-        const changes = [];
-        snapshot.docChanges().forEach(change => {
-          const docData = change.doc.data();
-          const docWithId = { 
-            ...docData, 
-            id: change.doc.id,
-            createdAt: docData.createdAt instanceof Date ? docData.createdAt.toISOString() : 
-                       docData.createdAt?.toDate?.() ? docData.createdAt.toDate().toISOString() : 
-                       docData.createdAt || new Date().toISOString(),
-            updatedAt: docData.updatedAt instanceof Date ? docData.updatedAt.toISOString() : 
-                       docData.updatedAt?.toDate?.() ? docData.updatedAt.toDate().toISOString() : 
-                       docData.updatedAt || new Date().toISOString()
-          };
-          
-          changes.push({
-            type: change.type,
-            doc: docWithId
-          });
-        });
-        
-        // Process changes
-        if (changes.length > 0) {
-          console.log("Firestore document changes detected:", changes.length);
-          
-          // Update projects state based on changes
-          setProjects(prevProjects => {
-            let newProjects = [...prevProjects];
-            
-            changes.forEach(change => {
-              if (change.type === 'added') {
-                // Check if project already exists in local state
-                const existingIndex = newProjects.findIndex(p => p.id === change.doc.id);
-                if (existingIndex === -1) {
-                  newProjects.push(change.doc);
-                }
-              } else if (change.type === 'modified') {
-                // Update existing project
-                const index = newProjects.findIndex(p => p.id === change.doc.id);
-                if (index !== -1) {
-                  newProjects[index] = change.doc;
-                }
-              } else if (change.type === 'removed') {
-                // Remove deleted project
-                newProjects = newProjects.filter(p => p.id !== change.doc.id);
-              }
-            });
-            
-            return newProjects;
-          });
-        }
-      },
-      (error) => {
-        console.error("Error in projects snapshot listener:", error);
-        // Ignore BloomFilter errors
-        if (error.name !== "BloomFilterError") {
-          showNotification('Error syncing with database', 'error');
-        }
-      }
-    );
-    
-    // Clean up listener on component unmount
-    return () => unsubscribe();
+
+    // Refresh data every 30 seconds to keep in sync
+    const interval = setInterval(fetchProjects, 30000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => {
+      previewUrls.forEach(url => {
+        if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+      });
+    };
+  }, [previewUrls]);
+
+  // Auto-initialize order field for projects that don't have one
+  useEffect(() => {
+    if (projects.length > 0) {
+      const needsInit = projects.some(p => p.order === undefined || p.order === null);
+      if (needsInit) {
+        initializeOrders();
+      }
+    }
+  }, [projects]);
 
   // Validate and format project object before submitting to Firebase
   const validateProject = (project, isUpdate = false) => {
@@ -191,10 +137,9 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
       errors.push('Description is required');
     }
 
-    // For new projects, image is required
-    // For updates, image is optional (can use placeholder if none provided)
-    if (!isUpdate && !project.img) {
-      errors.push('Project image is required');
+    // For new projects, at least one image is required
+    if (!isUpdate && (!project.images || project.images.length === 0)) {
+      errors.push('At least one project image is required');
     }
 
     // Validate URLs if provided
@@ -211,8 +156,10 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
       errors.push('Tags must be an array');
     }
 
-    // Use placeholder image if no image provided for updates
-    const finalImg = project.img || (isUpdate ? 'https://source.unsplash.com/random/400x300?tech' : project.img);
+    // Use placeholder image if no images provided for updates
+    const finalImages = (project.images && project.images.length > 0) 
+      ? project.images 
+      : (isUpdate ? ['https://source.unsplash.com/random/400x300?tech'] : project.images || []);
 
     // Return validation result
     return {
@@ -221,11 +168,13 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
       formattedProject: errors.length === 0 ? {
         title: project.title.trim(),
         desc: project.desc.trim(),
-        img: finalImg,
+        img: finalImages[0] || '', // Keep first image as img for backward compatibility
+        images: finalImages,
         github: project.github ? project.github.trim() : '',
         demo: project.demo ? project.demo.trim() : '',
         tags: Array.isArray(project.tags) ? project.tags : [],
         featured: Boolean(project.featured),
+        order: project.order !== undefined ? project.order : 999,
         createdAt: project.createdAt || serverTimestamp(),
         updatedAt: project.updatedAt || serverTimestamp(),
         id: project.id || null
@@ -233,7 +182,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
     };
   };
 
-  const addProjectWithImage = async (imageData) => {
+  const addProjectWithImages = async (imagesBase64) => {
     // Process tags
     const tagsArray = newProject.tags
       ? newProject.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
@@ -243,10 +192,12 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
     const projectData = {
       title: newProject.title,
       desc: newProject.desc,
-      img: imageData,
+      images: imagesBase64,
+      img: imagesBase64[0] || '',
       github: newProject.github || '',
       demo: newProject.demo || '',
       tags: tagsArray,
+      order: projects.length, // Add at the end of current order
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       featured: Boolean(newProject.featured)
@@ -261,10 +212,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
     }
 
     try {
-      // Add to Firestore
       const docRef = await addDoc(collection(db, "projects"), formattedProject);
-      
-      // For local state, we need a JavaScript date since serverTimestamp is only resolved in Firestore
       const localTimestamp = new Date().toISOString();
       const projectWithId = { 
         ...formattedProject, 
@@ -273,10 +221,8 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
         updatedAt: localTimestamp
       };
       
-      // Update local state
       setProjects(prev => [...prev, projectWithId]);
 
-      // Add to history
       const historyEntry = {
         project: JSON.parse(JSON.stringify(projectWithId)),
         action: 'added',
@@ -291,7 +237,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
       console.log("Project added to Firebase with ID:", docRef.id);
     } catch (error) {
       console.error("Error adding project:", error);
-      showNotification('Error saving project to database', 'error');
+      showNotification(`Add error [${error.code || error.name}]: ${error.message}`, 'error');
     }
   };
 
@@ -332,7 +278,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
       console.log("Project updated in Firebase with ID:", formattedProject.id);
     } catch (error) {
       console.error("Error updating project:", error);
-      showNotification('Error updating project in database', 'error');
+      showNotification(`Update error [${error.code || error.name}]: ${error.message}`, 'error');
     }
   };
 
@@ -443,14 +389,12 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
     }
   };
 
-  // Clear preview URL when component unmounts
+  // Clear preview URLs when component unmounts
   useEffect(() => {
     return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
     };
-  }, [previewUrl]);
+  }, [previewUrls]);
   
   // Function to show notifications
   const showNotification = useCallback((message, type = 'success') => {
@@ -509,26 +453,9 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
     }
   }, [projects]);
 
-  // Fetch visitor stats when Analytics tab is active
-  useEffect(() => {
-    const fetchVisitorStats = async () => {
-      if (activeTab === 'stats' && !visitorStats) {
-        setIsLoadingStats(true);
-        try {
-          const data = await getAnalyticsData();
-          if (data) {
-            setVisitorStats(data);
-          }
-        } catch (error) {
-          console.error('Error fetching visitor stats:', error);
-          showNotification('Failed to load visitor statistics', 'error');
-        }
-        setIsLoadingStats(false);
-      }
-    };
-    
-    fetchVisitorStats();
-  }, [activeTab]);
+  // Fetch visitor stats when Analytics tab is active (disabled - GA4 requires backend)
+  // Visitor analytics from Google Analytics 4 require a server-side API,
+  // which is not available in a static client-side app.
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -552,10 +479,11 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
           let width = img.width;
           let height = img.height;
           
-          // Calculate new dimensions while maintaining aspect ratio
-          if (width > 1200) {
-            height = Math.round((height * 1200) / width);
-            width = 1200;
+          // Max 800px width to keep base64 under 1MB Firestore limit
+          const MAX_WIDTH = 800;
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
           }
           
           canvas.width = width;
@@ -564,7 +492,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
           
-          // Compress as JPEG with 0.7 quality
+          // Compress as JPEG with 0.6 quality to stay well under 1MB base64
           canvas.toBlob(
             (blob) => {
               if (blob) {
@@ -574,7 +502,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
               }
             },
             'image/jpeg',
-            0.7
+            0.6
           );
         };
         
@@ -590,38 +518,39 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
   };
 
   const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
       try {
-        let imageToUse = file;
-        
-        // Compress image if size is more than 2MB
-        if (file.size > 2 * 1024 * 1024) {
+        const compressedFiles = [];
+        const newUrls = [];
+
+        for (const file of files) {
+          let imageToUse;
           try {
             imageToUse = await compressImage(file);
-            console.log("Image compressed:", imageToUse.size);
+            console.log(`Image compressed: ${(file.size / 1024).toFixed(0)}KB → ${(imageToUse.size / 1024).toFixed(0)}KB`);
           } catch (error) {
             console.error("Error compressing image:", error);
-            showNotification('Failed to compress image, trying with original', 'warning');
+            imageToUse = file;
           }
-        }
-        
-        // Revoke previous URL if exists
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl);
+          compressedFiles.push(imageToUse);
+          newUrls.push(URL.createObjectURL(imageToUse));
         }
 
-        // Create new preview URL
-        const objectUrl = URL.createObjectURL(imageToUse);
-        setPreviewUrl(objectUrl);
-        setNewImage(imageToUse);
-        
-        console.log("Image processed:", imageToUse.name || 'compressed-image', "Size:", imageToUse.size);
+        setNewImages(prev => [...prev, ...compressedFiles]);
+        setPreviewUrls(prev => [...prev, ...newUrls]);
+        console.log(`Added ${compressedFiles.length} image(s). Total: ${newImages.length + compressedFiles.length}`);
       } catch (error) {
-        console.error("Error processing image:", error);
-        showNotification('Error processing image. Please try a different image.', 'error');
+        console.error("Error processing images:", error);
+        showNotification('Error processing images. Please try again.', 'error');
       }
     }
+  };
+
+  const removeImage = (index) => {
+    URL.revokeObjectURL(previewUrls[index]);
+    setNewImages(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
   
   // Handle drag and drop for images
@@ -639,39 +568,33 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
     e.preventDefault();
     setIsDragging(false);
     
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length > 0) {
       try {
-        let imageToUse = file;
-        
-        // Compress image if size is more than 2MB
-        if (file.size > 2 * 1024 * 1024) {
+        const compressedFiles = [];
+        const newUrls = [];
+
+        for (const file of files) {
+          let imageToUse;
           try {
             imageToUse = await compressImage(file);
-            console.log("Image compressed:", imageToUse.size);
+            console.log(`Dropped image compressed: ${(file.size / 1024).toFixed(0)}KB → ${(imageToUse.size / 1024).toFixed(0)}KB`);
           } catch (error) {
-            console.error("Error compressing image:", error);
-            showNotification('Failed to compress image, trying with original', 'warning');
+            console.error("Error compressing dropped image:", error);
+            imageToUse = file;
           }
-        }
-        
-        // Revoke previous URL if exists
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl);
+          compressedFiles.push(imageToUse);
+          newUrls.push(URL.createObjectURL(imageToUse));
         }
 
-        // Create new preview URL
-        const objectUrl = URL.createObjectURL(imageToUse);
-        setPreviewUrl(objectUrl);
-        setNewImage(imageToUse);
-        
-        console.log("Image dropped and processed:", imageToUse.name || 'compressed-image', "Size:", imageToUse.size);
+        setNewImages(prev => [...prev, ...compressedFiles]);
+        setPreviewUrls(prev => [...prev, ...newUrls]);
       } catch (error) {
-        console.error("Error processing dropped image:", error);
-        showNotification('Error processing image. Please try a different image.', 'error');
+        console.error("Error processing dropped images:", error);
+        showNotification('Error processing images.', 'error');
       }
     } else {
-      showNotification('Please drop an image file', 'error');
+      showNotification('Please drop image file(s)', 'error');
     }
   };
 
@@ -695,32 +618,34 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
       return;
     }
 
-    // Continue with existing logic
+    // Editing mode
     if (isEditing) {
       handleUpdateProject();
       return;
     }
 
-    if (newImage) {
-      // Use FileReader to convert image to base64 string
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          await addProjectWithImage(reader.result);
-        } catch (error) {
-          console.error("Error in handleSubmit:", error);
-          showNotification('Failed to save project. Please try again.', 'error');
-        }
-      };
-      reader.onerror = () => {
-        showNotification('Error reading image file. Please try again.', 'error');
-      };
-      reader.readAsDataURL(newImage);
+    // Add new project - process all images
+    if (newImages.length > 0) {
+      const readers = newImages.map((imgFile) => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('Failed to read image'));
+          reader.readAsDataURL(imgFile);
+        });
+      });
+
+      Promise.all(readers)
+        .then((base64Images) => addProjectWithImages(base64Images))
+        .catch((error) => {
+          console.error('Error processing images:', error);
+          showNotification('Error processing images. Please try again.', 'error');
+        });
     } else {
       // Use a placeholder if no image was provided
-      addProjectWithImage('https://source.unsplash.com/random/400x300?tech')
+      addProjectWithImages(['https://source.unsplash.com/random/400x300?tech'])
         .catch(error => {
-          console.error("Error adding project with placeholder:", error);
+          console.error('Error adding project:', error);
           showNotification('Failed to save project. Please try again.', 'error');
         });
     }
@@ -738,11 +663,10 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
 
   const resetForm = () => {
     setNewProject({ title: '', desc: '', github: '', demo: '', tags: '', featured: false });
-    setNewImage(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl('');
-    }
+    // Revoke all preview URLs
+    previewUrls.forEach(url => URL.revokeObjectURL(url));
+    setNewImages([]);
+    setPreviewUrls([]);
     setIsEditing(false);
     setEditIndex(null);
   };
@@ -757,42 +681,54 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
       ? newProject.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
       : [];
 
-    // Create updated project object
-    const updatedProject = {
-      title: newProject.title,
-      desc: newProject.desc,
-      img: oldProject.img || 'https://source.unsplash.com/random/400x300?tech', // Keep existing image or use placeholder
-      github: newProject.github || '',
-      demo: newProject.demo || '',
-      tags: tagsArray,
-      createdAt: oldProject.createdAt,
-      updatedAt: serverTimestamp(),
-      id: oldProject.id,
-      featured: Boolean(newProject.featured)
+    // Determine images: use new images if uploaded, otherwise keep existing
+    const existingImages = oldProject.images && Array.isArray(oldProject.images) 
+      ? oldProject.images 
+      : (oldProject.img ? [oldProject.img] : []);
+
+    const processUpdate = (imagesBase64) => {
+      const updatedProject = {
+        title: newProject.title,
+        desc: newProject.desc,
+        images: imagesBase64,
+        img: imagesBase64[0] || existingImages[0] || 'https://source.unsplash.com/random/400x300?tech',
+        github: newProject.github || '',
+        demo: newProject.demo || '',
+        tags: tagsArray,
+        createdAt: oldProject.createdAt,
+        updatedAt: serverTimestamp(),
+        id: oldProject.id,
+        featured: Boolean(newProject.featured)
+      };
+
+      const { isValid, errors } = validateProject(updatedProject, true);
+      if (!isValid) {
+        showNotification(`Invalid project data: ${errors.join(', ')}`, 'error');
+        return;
+      }
+      finalizeProjectUpdate(updatedProject);
     };
 
-    // Validate project data
-    const { isValid, errors } = validateProject(updatedProject, true);
-    
-    if (!isValid) {
-      showNotification(`Invalid project data: ${errors.join(', ')}`, 'error');
-      return;
-    }
-
-    // If a new image was uploaded, process it
-    if (newImage) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        // Update with new image
-        finalizeProjectUpdate({
-          ...updatedProject,
-          img: reader.result
+    // If new images were uploaded, process them
+    if (newImages.length > 0) {
+      const readers = newImages.map((imgFile) => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('Failed to read image'));
+          reader.readAsDataURL(imgFile);
         });
-      };
-      reader.readAsDataURL(newImage);
+      });
+
+      Promise.all(readers)
+        .then((base64Images) => processUpdate(base64Images))
+        .catch((error) => {
+          console.error('Error processing images:', error);
+          showNotification('Error processing images.', 'error');
+        });
     } else {
-      // No new image, update with existing image
-      finalizeProjectUpdate(updatedProject);
+      // Keep existing images
+      processUpdate(existingImages);
     }
   };
 
@@ -808,9 +744,12 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
       featured: projectToEdit.featured || false
     });
 
-    // Set the preview to the existing image
-    setPreviewUrl(projectToEdit.img);
-    setNewImage(null);
+    // Set preview URLs from existing project images
+    const images = projectToEdit.images && Array.isArray(projectToEdit.images) && projectToEdit.images.length > 0
+      ? projectToEdit.images
+      : (projectToEdit.img ? [projectToEdit.img] : []);
+    setPreviewUrls(images);
+    setNewImages([]);
 
     setIsEditing(true);
     setEditIndex(index);
@@ -866,6 +805,63 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
     } catch (error) {
       console.error("Error updating featured status:", error);
       showNotification('Error updating featured status', 'error');
+    }
+  };
+
+  // Move project up or down in custom order
+  const moveProject = async (index, direction) => {
+    // direction: -1 (up) or +1 (down)
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= projects.length) return;
+
+    const updatedProjects = [...projects];
+    // Swap order values
+    const tempOrder = updatedProjects[index].order;
+    updatedProjects[index].order = updatedProjects[newIndex].order;
+    updatedProjects[newIndex].order = tempOrder;
+
+    // Handle undefined orders: assign sequential values
+    if (updatedProjects[index].order === undefined || updatedProjects[newIndex].order === undefined) {
+      updatedProjects.forEach((p, i) => { p.order = i; });
+    }
+
+    setProjects(updatedProjects);
+
+    // Update both projects in Firestore
+    try {
+      const ref1 = doc(db, 'projects', updatedProjects[index].id);
+      const ref2 = doc(db, 'projects', updatedProjects[newIndex].id);
+      await updateDoc(ref1, { order: updatedProjects[index].order });
+      await updateDoc(ref2, { order: updatedProjects[newIndex].order });
+      showNotification('Project order updated', 'info');
+    } catch (error) {
+      console.error('Error updating project order:', error);
+      showNotification(`Reorder error: ${error.message}`, 'error');
+    }
+  };
+
+  // Initialize order field for projects that don't have one
+  const initializeOrders = async () => {
+    const needsInit = projects.some(p => p.order === undefined || p.order === null);
+    if (!needsInit) return;
+
+    const sorted = [...projects].sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateA - dateB;
+    });
+
+    const updated = sorted.map((p, i) => ({ ...p, order: i }));
+    setProjects(updated);
+
+    try {
+      for (const p of updated) {
+        const ref = doc(db, 'projects', p.id);
+        await updateDoc(ref, { order: p.order });
+      }
+      showNotification('Project orders initialized', 'info');
+    } catch (error) {
+      console.error('Error initializing orders:', error);
     }
   };
   
@@ -1060,33 +1056,6 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
     return Array.from(tagSet).sort();
   };
   
-  // Duplicate a project
-  const duplicateProject = (index) => {
-    const projectToDuplicate = JSON.parse(JSON.stringify(projects[index]));
-    const timestamp = new Date().toISOString();
-    
-    const duplicatedProject = {
-      ...projectToDuplicate,
-      title: `${projectToDuplicate.title} (Copy)`,
-      id: `project-${Date.now()}`,
-      createdAt: timestamp,
-      updatedAt: timestamp
-    };
-    
-    setProjects([...projects, duplicatedProject]);
-    
-    // Add to history
-    const historyEntry = {
-      project: duplicatedProject,
-      action: 'added',
-      timestamp,
-      id: `history-${Date.now()}`
-    };
-    
-    setProjectHistory([...projectHistory, historyEntry]);
-    showNotification(`Project "${projectToDuplicate.title}" duplicated.`);
-  };
-
   // Filter and sort projects
   const filteredProjects = projects.filter(project => {
     if (!project) return false;
@@ -1126,14 +1095,19 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
   });
 
   const sortedProjects = [...filteredProjects].sort((a, b) => {
-    // First sort by featured status
+    // First sort by featured status (featured always on top)
     if (a.featured !== b.featured) {
       return a.featured ? -1 : 1;
     }
     
     // Then by the selected sort order
     try {
-      if (sortOrder === 'newest') {
+      if (sortOrder === 'custom') {
+        // Sort by custom order field (lower = first)
+        const orderA = a.order !== undefined && a.order !== null ? a.order : 999;
+        const orderB = b.order !== undefined && b.order !== null ? b.order : 999;
+        return orderA - orderB;
+      } else if (sortOrder === 'newest') {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
@@ -1234,7 +1208,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
         showNotification(`Deleted ${deletedProjects.length} projects successfully from database`, 'warning');
       } catch (error) {
         console.error("Error deleting projects from Firebase:", error);
-        showNotification('Error deleting projects from database', 'error');
+        showNotification(`Delete error [${error.code || error.name}]: ${error.message}`, 'error');
       }
     }
   };
@@ -1628,6 +1602,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
                 onChange={(e) => setSortOrder(e.target.value)}
                 className="flex-1 sm:flex-none px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-700/50 hover:bg-gray-700/70 rounded-lg border-none text-sm text-white focus:ring-2 focus:ring-purple-500 transition-colors duration-200"
               >
+                <option value="custom">Custom Order</option>
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
                 <option value="alphabetical">A-Z</option>
@@ -1725,9 +1700,11 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
 
           {/* Projects Grid */}
           <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6' : 'space-y-4'}`}>
-            {sortedProjects.map((project, index) => (
+            {sortedProjects.map((project, sortedIndex) => {
+              const realIndex = projects.findIndex(p => p.id === project.id);
+              return (
               <div
-                key={`${project.id || 'project'}-${index}`}
+                key={`${project.id || 'project'}-${sortedIndex}`}
                 onClick={bulkActionMode ? (e) => selectProject(project.id, e) : undefined}
                 className={`${viewMode === 'grid' ? '' : 'flex flex-col sm:flex-row gap-4'} 
                   bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-xl overflow-hidden 
@@ -1767,19 +1744,6 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
                         <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"></path>
-                      </svg>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        duplicateProject(index);
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 p-2 rounded-full shadow-lg transform hover:scale-110 transition-transform"
-                      title="Duplicate project"
-                    >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z"></path>
-                        <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z"></path>
                       </svg>
                     </button>
                   </div>
@@ -1857,10 +1821,40 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
                     </span>
                     {!bulkActionMode && (
                       <div className="flex gap-1 sm:gap-2">
+                        {/* Move Up button */}
+                        {sortOrder === 'custom' && sortedIndex > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveProject(sortedIndex, -1);
+                            }}
+                            className="p-1 sm:p-1.5 hover:text-green-400 transition-colors"
+                            title="Move up"
+                          >
+                            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        )}
+                        {/* Move Down button */}
+                        {sortOrder === 'custom' && sortedIndex < sortedProjects.length - 1 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveProject(sortedIndex, 1);
+                            }}
+                            className="p-1 sm:p-1.5 hover:text-green-400 transition-colors"
+                            title="Move down"
+                          >
+                            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleEditProject(index);
+                            handleEditProject(realIndex);
                           }}
                           className="p-1 sm:p-1.5 hover:text-blue-400 transition-colors"
                           title="Edit"
@@ -1872,7 +1866,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            confirmDelete(index);
+                            confirmDelete(realIndex);
                           }}
                           className="p-1 sm:p-1.5 hover:text-red-400 transition-colors"
                           title="Delete"
@@ -1884,7 +1878,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleFeatured(index);
+                            toggleFeatured(realIndex);
                           }}
                           className={`p-1 sm:p-1.5 transition-colors ${project.featured ? 'text-yellow-400' : 'hover:text-yellow-400'}`}
                           title={project.featured ? "Remove from featured" : "Add to featured"}
@@ -1898,7 +1892,8 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Empty state */}
@@ -2026,7 +2021,7 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Project Image
+                Project Images {isEditing && previewUrls.length > 0 && `(${previewUrls.length} current)`}
               </label>
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center ${
@@ -2036,53 +2031,56 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
               >
-                {previewUrl ? (
-                  <div className="relative">
-                    <img
-                      src={previewUrl}
-                      alt="Preview"
-                      className="mx-auto max-h-48 rounded"
-                      onError={(e) => {
-                        console.error("Error loading image preview:", e);
-                        // Set to default image on error
-                        e.target.onerror = null; // Prevent infinite loops
-                        e.target.src = 'https://via.placeholder.com/400x300?text=Image+Error';
-                      }}
-                    />
-                    <button
-                      onClick={() => {
-                        if (previewUrl) {
-                          URL.revokeObjectURL(previewUrl);
-                          setPreviewUrl('');
-                          setNewImage(null);
-                        }
-                      }}
-                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full"
-                      title="Remove image"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                      </svg>
-                    </button>
+                {previewUrls.length > 0 ? (
+                  <div>
+                    <div className="flex flex-wrap gap-3 justify-center">
+                      {previewUrls.map((url, idx) => (
+                        <div key={idx} className="relative group">
+                          <img
+                            src={url}
+                            alt={`Preview ${idx + 1}`}
+                            className="w-32 h-24 object-cover rounded-lg border-2 border-gray-600"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'https://via.placeholder.com/132x96?text=Error';
+                            }}
+                          />
+                          <button
+                            onClick={() => removeImage(idx)}
+                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Remove image"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                          </button>
+                          <span className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-1.5 rounded">
+                            {idx + 1}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-3">{previewUrls.length} image(s). Add more below:</p>
                   </div>
                 ) : (
                   <div className="text-gray-400">
-                    <p>Drag and drop an image here, or</p>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="image-upload"
-                    />
-                    <label
-                      htmlFor="image-upload"
-                      className="inline-block mt-2 px-4 py-2 bg-purple-600 rounded-lg cursor-pointer hover:bg-purple-700"
-                    >
-                      Choose File
-                    </label>
+                    <p>Drag and drop image(s) here, or</p>
                   </div>
                 )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <label
+                  htmlFor="image-upload"
+                  className="inline-block mt-3 px-4 py-2 bg-purple-600 rounded-lg cursor-pointer hover:bg-purple-700"
+                >
+                  {previewUrls.length > 0 ? 'Add More Images' : 'Choose Files'}
+                </label>
               </div>
             </div>
 
@@ -2692,154 +2690,84 @@ export function UploadProject({ onAddProject, isAdmin, onLogout }) {
               </div>
             </div>
 
-            {/* New Visitor Analytics Card */}
-            <div className="bg-gradient-to-br from-green-900/50 to-green-800/30 p-6 rounded-xl border border-green-700/30 shadow-lg transition-transform hover:scale-[1.02] duration-300">
+            {/* Tags Statistics Card */}
+            <div className="bg-gradient-to-br from-green-900/50 to-green-800/30 p-6 rounded-xl border border-green-700/30">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm">Unique Visitors</p>
+                  <p className="text-gray-400 text-sm">Total Tags Used</p>
                   <h3 className="text-3xl font-bold text-white mt-1">
-                    {isLoadingStats ? (
-                      <span className="animate-pulse">Loading...</span>
-                    ) : (
-                      visitorStats?.totals?.[0]?.values?.[0] || '0'
-                    )}
+                    {(() => {
+                      const tags = new Set();
+                      projects.forEach(p => {
+                        if (p.tags && Array.isArray(p.tags)) p.tags.forEach(t => tags.add(t));
+                      });
+                      return tags.size;
+                    })()}
                   </h3>
                 </div>
                 <div className="p-2 bg-green-500/20 rounded-lg">
                   <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                   </svg>
                 </div>
               </div>
               <div className="mt-4 flex items-center text-sm">
-                <span className="text-gray-400">Last 30 days: </span>
+                <span className="text-gray-400">Avg per project: </span>
                 <span className="ml-2 text-green-400">
-                  {isLoadingStats ? 
-                    'Loading...' : 
-                    `${visitorStats?.totals?.[0]?.values?.[1] || '0'} sessions`
-                  }
+                  {projects.length > 0 ? 
+                    (projects.reduce((sum, p) => sum + (p.tags?.length || 0), 0) / projects.length).toFixed(1) 
+                    : 0}
                 </span>
               </div>
-              {!isLoadingStats && visitorStats?.rows && visitorStats.rows.length > 1 && (
-                <div className="mt-2 flex items-center text-xs">
-                  <span className={`flex items-center ${
-                    visitorStats.rows[visitorStats.rows.length-1].metrics[0].values[0] > 
-                    visitorStats.rows[0].metrics[0].values[0] ? 'text-green-400' : 'text-red-400'
-                  }`}>
-                    {visitorStats.rows[visitorStats.rows.length-1].metrics[0].values[0] > 
-                      visitorStats.rows[0].metrics[0].values[0] ? (
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                      </svg>
-                    )}
-                    Trend
-                  </span>
-                </div>
-              )}
             </div>
 
-            {/* Page Views Card */}
-            <div className="bg-gradient-to-br from-cyan-900/50 to-cyan-800/30 p-6 rounded-xl border border-cyan-700/30 shadow-lg transition-transform hover:scale-[1.02] duration-300">
+            {/* Images Statistics Card */}
+            <div className="bg-gradient-to-br from-cyan-900/50 to-cyan-800/30 p-6 rounded-xl border border-cyan-700/30">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm">Total Page Views</p>
+                  <p className="text-gray-400 text-sm">Total Images</p>
                   <h3 className="text-3xl font-bold text-white mt-1">
-                    {isLoadingStats ? (
-                      <span className="animate-pulse">Loading...</span>
-                    ) : (
-                      visitorStats?.totals?.[0]?.values?.[2] || '0'
-                    )}
+                    {projects.reduce((sum, p) => {
+                      if (p.images && Array.isArray(p.images)) return sum + p.images.length;
+                      if (p.img) return sum + 1;
+                      return sum;
+                    }, 0)}
                   </h3>
                 </div>
                 <div className="p-2 bg-cyan-500/20 rounded-lg">
                   <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
               </div>
               <div className="mt-4 flex items-center text-sm">
-                <span className="text-gray-400">Avg. per session: </span>
+                <span className="text-gray-400">Multi-image projects: </span>
                 <span className="ml-2 text-cyan-400">
-                  {isLoadingStats ? 
-                    'Loading...' : 
-                    ((visitorStats?.totals?.[0]?.values?.[2] || 0) / 
-                     (visitorStats?.totals?.[0]?.values?.[1] || 1)).toFixed(1)
-                  }
+                  {projects.filter(p => p.images && p.images.length > 1).length}
                 </span>
               </div>
-              {!isLoadingStats && visitorStats?.rows && visitorStats.rows.length > 1 && (
-                <div className="mt-2 flex items-center text-xs">
-                  <span className="bg-cyan-500/20 px-2 py-1 rounded text-cyan-300">
-                    {((visitorStats?.totals?.[0]?.values?.[2] || 0) / 
-                     (visitorStats?.totals?.[0]?.values?.[0] || 1)).toFixed(1)} pages/visitor
-                  </span>
+            </div>
+
+            {/* GA4 Info Card */}
+            <div className="sm:col-span-2 lg:col-span-3 bg-gradient-to-br from-gray-800/50 to-gray-700/30 p-6 rounded-xl border border-gray-600/30">
+              <div className="flex items-start gap-4">
+                <div className="p-2 bg-indigo-500/20 rounded-lg flex-shrink-0">
+                  <svg className="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                 </div>
-              )}
+                <div>
+                  <h3 className="text-white font-semibold mb-1">Visitor Analytics (Google Analytics 4)</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    Visitor statistics (unique visitors, page views, daily trends) require a backend server to access the Google Analytics Data API.
+                    Since this portfolio runs as a static site on GitHub Pages, GA4 data cannot be fetched from the client side.
+                    To enable visitor analytics, you would need to set up a Cloud Function or backend service with GA4 API credentials.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Visitor Timeline */}
-          {visitorStats?.rows && (
-            <div className="bg-gray-800/50 rounded-xl p-6 shadow-lg">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-white">Daily Visitors</h3>
-                {visitorStats.rows.length > 0 && (
-                  <div className="text-xs text-gray-400 bg-gray-700/50 px-2 py-1 rounded-full">
-                    {new Date(visitorStats.rows[0].dimensions[0].replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')).toLocaleDateString()} - 
-                    {new Date(visitorStats.rows[visitorStats.rows.length-1].dimensions[0].replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')).toLocaleDateString()}
-                  </div>
-                )}
-              </div>
-              <div className="h-60 relative">
-                <div className="absolute inset-0 flex items-end">
-                  {visitorStats.rows.map((row, index) => {
-                    const height = `${(row.metrics[0].values[0] / Math.max(...visitorStats.rows.map(r => parseInt(r.metrics[0].values[0])))) * 100}%`;
-                    const date = new Date(row.dimensions[0].replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'));
-                    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                    const isToday = new Date().toISOString().split('T')[0] === date.toISOString().split('T')[0];
-                    
-                    return (
-                      <div
-                        key={row.dimensions[0]}
-                        className="flex-1 mx-0.5 group relative"
-                        style={{ height }}
-                      >
-                        <div 
-                          className={`absolute inset-x-0 bottom-0 transition-all duration-300 rounded-t ${
-                            isToday ? 'bg-purple-500/80 group-hover:bg-purple-500' :
-                            isWeekend ? 'bg-purple-400/30 group-hover:bg-purple-400/50' : 
-                            'bg-purple-500/30 group-hover:bg-purple-500/50'
-                          }`} 
-                          style={{ height: '100%' }}
-                        >
-                          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
-                            {date.toLocaleDateString(undefined, {weekday: 'short', month: 'short', day: 'numeric'})}
-                            <br />
-                            {row.metrics[0].values[0]} visitors
-                          </div>
-                        </div>
-                        {index % 5 === 0 && (
-                          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-gray-500 text-xs">
-                            {date.getDate()}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-700/50"></div>
-              </div>
-              <div className="mt-6 pt-2 border-t border-gray-700/30 flex justify-between text-xs text-gray-500">
-                <span>Hover over bars for details</span>
-                <span>Weekend days shown in lighter color</span>
-              </div>
-            </div>
-          )}
         </div>
       )}
       

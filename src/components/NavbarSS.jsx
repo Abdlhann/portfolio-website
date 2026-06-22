@@ -1,483 +1,270 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, User, Code2, Contact, Menu, X, CodeSquare, Upload, Moon, Sun, Bell, ChevronDown, Settings, LogOut, Download, Share2 } from 'lucide-react';
+import { Home, User, Code2, Contact, CodeSquare, Upload, LogOut, Download, Menu, X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
-const navItems = [
-  { icon: <Home size={18} />, label: 'Home', href: '#hero' },
-  { icon: <User size={18} />, label: 'About Me', href: '#about' },
-  { icon: <CodeSquare size={18} />, label: 'Tech Stack', href: '#tech' },
-  { icon: <Code2 size={18} />, label: 'Projects', href: '#projects' },
-  { icon: <Contact size={18} />, label: 'Contact', href: '#contact' },
+const NAV_ITEMS = [
+  { icon: Home,        label: 'Home',       href: '#hero'     },
+  { icon: User,        label: 'About',      href: '#about'    },
+  { icon: CodeSquare,  label: 'Tech Stack', href: '#tech'     },
+  { icon: Code2,       label: 'Projects',   href: '#projects' },
+  { icon: Contact,     label: 'Contact',    href: '#contact'  },
 ];
 
-export function Navbar({ isLoggedIn, role, onLogout }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+function scrollTo(href) {
+  const id = href.replace('#', '');
+  const el = document.getElementById(id);
+  if (!el) return;
+  const offset = document.querySelector('header')?.offsetHeight || 64;
+  window.scrollTo({ top: el.getBoundingClientRect().top + window.pageYOffset - offset, behavior: 'smooth' });
+}
+
+export function Navbar({ isLoggedIn, role, isFirebaseAuthenticated, onLogout }) {
+  const [menuOpen,      setMenuOpen]      = useState(false);
+  const [scrolled,      setScrolled]      = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(3); // Example notification count
-  const audioRef = useRef(new Audio()); // Initialize without src
-  const progressBarRef = useRef(null);
+  const [scrollPct,     setScrollPct]     = useState(0);
+  const [moreOpen,      setMoreOpen]      = useState(false);
+  const moreRef = useRef(null);
 
-  // Handle scroll effect and progress
+  // Scroll tracking
   useEffect(() => {
-    let animationFrameId;
-
-    const updateProgress = () => {
-      const winScroll = window.pageYOffset || document.documentElement.scrollTop;
-      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      const scrolled = (winScroll / height) * 100;
-      
-      setScrollProgress(scrolled);
-      setScrolled(winScroll > 50);
-
-      // Update active section
-      const sections = ['hero', 'about', 'tech', 'projects', 'contact'];
-      for (const section of sections) {
-        const element = document.getElementById(section);
-        if (element) {
-          const rect = element.getBoundingClientRect();
-          if (rect.top <= 150 && rect.bottom >= 150) {
-            setActiveSection(section);
-            break;
-          }
+    let raf;
+    const tick = () => {
+      const y = window.pageYOffset;
+      const h = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      setScrollPct(h > 0 ? (y / h) * 100 : 0);
+      setScrolled(y > 50);
+      const sections = ['hero','about','tech','projects','contact'];
+      for (const s of sections) {
+        const el = document.getElementById(s);
+        if (el) {
+          const r = el.getBoundingClientRect();
+          if (r.top <= 160 && r.bottom >= 160) { setActiveSection(s); break; }
         }
       }
-
-      animationFrameId = requestAnimationFrame(updateProgress);
+      raf = requestAnimationFrame(tick);
     };
-
-    updateProgress();
-    return () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
-    };
+    tick();
+    return () => cancelAnimationFrame(raf);
   }, []);
 
-  // Add hash change listener to ensure proper scrolling
+  // Close more dropdown on outside click
   useEffect(() => {
-    const handleHashChange = () => {
-      // Check if we have a hash in the URL
-      if (window.location.hash) {
-        const targetId = window.location.hash.substring(1);
-        const element = document.getElementById(targetId);
-        
-        if (element) {
-          // Wait a bit to ensure the page is ready
-          setTimeout(() => {
-            // Get header height
-            const headerHeight = document.querySelector('header').offsetHeight;
-            
-            // Get the absolute top position of the element relative to the document
-            const elementOffset = element.getBoundingClientRect().top + window.pageYOffset;
-            
-            // Scroll to exactly the start position of the element minus the header height
-            window.scrollTo({
-              top: elementOffset - headerHeight,
-              behavior: 'smooth'
-            });
-          }, 100);
-        }
-      }
-    };
-
-    // Add event listener for hash changes
-    window.addEventListener('hashchange', handleHashChange);
-    
-    // Also handle initial load if there's a hash in the URL
-    if (window.location.hash) {
-      handleHashChange();
-    }
-
-    return () => {
-      window.removeEventListener('hashchange', handleHashChange);
-    };
+    const handler = (e) => { if (moreRef.current && !moreRef.current.contains(e.target)) setMoreOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Play hover sound with error handling
-  const playHoverSound = () => {
-    if (!audioRef.current.src) {
-      try {
-        audioRef.current.src = '/portfolio-website/sounds/hover-sound.mp3';
-      } catch (error) {
-        console.warn('Hover sound not available');
-        return;
-      }
-    }
-    audioRef.current.volume = 0.1;
-    audioRef.current.currentTime = 0;
-    audioRef.current.play().catch(() => {}); // Ignore autoplay restrictions or missing file
-  };
-
-  // Quick actions menu items
-  const quickActions = [
-    { icon: <Download size={16} />, label: 'Download CV', action: () => window.open('/cv.pdf', '_blank') },
-    { icon: <Share2 size={16} />, label: 'Share Profile', action: () => navigator.share?.({ 
-      title: 'Anggra.Dev Portfolio',
-      url: window.location.href 
-    }) },
-    ...(isLoggedIn ? [{ icon: <LogOut size={16} />, label: 'Logout', action: onLogout }] : []),
-  ];
-
-  const toggleMenu = () => setMenuOpen(!menuOpen);
-  const closeMenu = () => setMenuOpen(false);
+  // Close mobile menu on resize to desktop
+  useEffect(() => {
+    const handler = () => { if (window.innerWidth >= 768) setMenuOpen(false); };
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   return (
     <>
-      {/* Scroll Progress Bar */}
-      <div 
-        ref={progressBarRef}
-        className="fixed top-0 left-0 w-full h-1 bg-gray-800/50 z-[999]"
-      >
-        <div 
-          className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 background-animate"
-          style={{
-            width: `${scrollProgress}%`,
-            willChange: 'width',
-            transition: 'width 50ms linear'
-          }}
+      {/* Progress bar */}
+      <div className="fixed top-0 left-0 w-full h-[3px] z-[1000] bg-indigo-100/60">
+        <motion.div
+          className="h-full origin-left"
+          style={{ background: 'linear-gradient(90deg,#6366f1,#8b5cf6,#06b6d4)', width: `${scrollPct}%` }}
+          transition={{ duration: 0.05 }}
         />
       </div>
 
-      <header className={`fixed top-0 left-0 w-full z-[99] transition-all duration-300 ${
-        scrolled ? 'backdrop-blur bg-black/50 shadow-lg' : 'backdrop-blur-sm bg-black/30'
-      } border-b border-white/10`}>
-        <nav className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between text-white">
-          {/* Logo with enhanced animation */}
+      <header
+        className={`fixed top-0 left-0 w-full z-[999] transition-all duration-300 ${
+          scrolled
+            ? 'bg-white/90 backdrop-blur-md shadow-md shadow-indigo-100/40'
+            : 'bg-white/70 backdrop-blur-sm'
+        } border-b border-indigo-100/60`}
+      >
+        <nav className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+
+          {/* Logo */}
           <motion.a
             href="#hero"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ 
-              duration: 0.8,
-              scale: { type: "spring", stiffness: 400, damping: 10 }
-            }}
-            className="text-xl font-bold tracking-wide bg-gradient-to-r from-purple-400 via-pink-500 to-indigo-400 bg-clip-text text-transparent cursor-pointer relative group"
-            onMouseEnter={playHoverSound}
+            onClick={(e) => { e.preventDefault(); scrollTo('#hero'); }}
+            className="flex items-center gap-2 flex-shrink-0"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
           >
-            Anggra.Dev
-            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 via-pink-500 to-indigo-400 transition-all group-hover:w-full"></span>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6,#06b6d4)' }}>
+              A
+            </div>
+            <span className="font-bold text-base bg-gradient-to-r from-indigo-600 via-violet-600 to-cyan-500 bg-clip-text text-transparent hidden sm:block">
+              Abdul Hannan
+            </span>
           </motion.a>
 
-          {/* Desktop Menu */}
-          <motion.ul
-            initial="hidden"
-            animate="visible"
-            variants={{
-              hidden: {},
-              visible: { transition: { staggerChildren: 0.12 } },
-            }}
-            className="hidden md:flex space-x-6 text-sm md:text-base font-medium"
-          >
-            {navItems.map((item, index) => (
-              <motion.li
-                key={index}
-                variants={{
-                  hidden: { opacity: 0, y: -20, scale: 0.95 },
-                  visible: { opacity: 1, y: 0, scale: 1 },
-                }}
-                transition={{
-                  duration: 0.5,
-                  ease: [0.175, 0.885, 0.32, 1.275],
-                }}
-              >
-                <NavItem 
-                  icon={item.icon} 
-                  label={item.label} 
-                  href={item.href} 
-                  isActive={`#${activeSection}` === item.href}
-                  onHover={playHoverSound}
-                />
-              </motion.li>
-            ))}
-
-            {isLoggedIn && role === 'Admin' && (
-              <motion.li
-                variants={{
-                  hidden: { opacity: 0, y: -20, scale: 0.95 },
-                  visible: { opacity: 1, y: 0, scale: 1 },
-                }}
-                transition={{
-                  duration: 0.5,
-                  ease: [0.175, 0.885, 0.32, 1.275],
-                }}
-              >
+          {/* Desktop nav */}
+          <ul className="hidden md:flex items-center gap-1">
+            {NAV_ITEMS.map(({ icon: Icon, label, href }) => {
+              const isActive = `#${activeSection}` === href;
+              return (
+                <li key={href}>
+                  <a
+                    href={href}
+                    onClick={(e) => { e.preventDefault(); scrollTo(href); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? 'bg-indigo-50 text-indigo-600 shadow-sm'
+                        : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/60'
+                    }`}
+                  >
+                    <Icon size={15} />
+                    {label}
+                  </a>
+                </li>
+              );
+            })}
+            {isFirebaseAuthenticated && (
+              <li>
                 <Link
                   to="/UploadProject"
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-full transition-all hover:bg-purple-600/20 hover:backdrop-blur-md hover:shadow-md hover:text-purple-300"
-                  onMouseEnter={playHoverSound}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/60 transition-all"
                 >
-                  <Upload size={18} />
-                  Upload Project
+                  <Upload size={15} />
+                  Upload
                 </Link>
-              </motion.li>
+              </li>
             )}
-          </motion.ul>
+          </ul>
 
-          {/* Action Buttons */}
-          <div className="hidden md:flex items-center gap-4">
-            {/* Notifications for Admin */}
-            {isLoggedIn && role === 'Admin' && (
-              <motion.div 
-                className="relative"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+          {/* Desktop right actions */}
+          <div className="hidden md:flex items-center gap-2">
+            {/* More dropdown */}
+            <div className="relative" ref={moreRef}>
+              <button
+                onClick={() => setMoreOpen(!moreOpen)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/60 transition-all"
               >
-                <button 
-                  className="p-2 rounded-full hover:bg-purple-600/20 transition-colors relative"
-                  onMouseEnter={playHoverSound}
-                >
-                  <Bell size={18} />
-                  {notificationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-                      {notificationCount}
-                    </span>
-                  )}
-                </button>
-              </motion.div>
-            )}
-
-            {/* Quick Actions Dropdown */}
-            <div className="relative">
-              <motion.button
-                onClick={() => setQuickActionsOpen(!quickActionsOpen)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-full hover:bg-purple-600/20 transition-colors"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onMouseEnter={playHoverSound}
-              >
-                <span>More Actions</span>
-                <ChevronDown size={16} className={`transform transition-transform ${quickActionsOpen ? 'rotate-180' : ''}`} />
-              </motion.button>
-
+                More
+                <ChevronDown size={14} className={`transition-transform duration-200 ${moreOpen ? 'rotate-180' : ''}`} />
+              </button>
               <AnimatePresence>
-                {quickActionsOpen && (
+                {moreOpen && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute right-0 mt-2 w-48 py-2 bg-gray-900/90 backdrop-blur-lg rounded-xl shadow-xl border border-white/10"
+                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg shadow-indigo-100/50 border border-indigo-100/60 overflow-hidden"
                   >
-                    {quickActions.map((action, index) => (
-                      <motion.button
-                        key={index}
-                        onClick={() => {
-                          action.action();
-                          setQuickActionsOpen(false);
-                        }}
-                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-white hover:bg-purple-600/20 transition-colors"
-                        whileHover={{ x: 5 }}
-                        onMouseEnter={playHoverSound}
+                    <button
+                      onClick={() => { window.open(`${import.meta.env.BASE_URL}cv.pdf`, '_blank'); setMoreOpen(false); }}
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                    >
+                      <Download size={14} /> Download CV
+                    </button>
+                    {isLoggedIn && (
+                      <button
+                        onClick={() => { onLogout(); setMoreOpen(false); }}
+                        className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
                       >
-                        {action.icon}
-                        {action.label}
-                      </motion.button>
-                    ))}
+                        <LogOut size={14} /> Logout
+                      </button>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
-            
-            {/* Only show logout button if logged in */}
-            {isLoggedIn && (
-              <motion.button
-                onClick={onLogout}
-                className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onMouseEnter={playHoverSound}
-              >
-                Logout
-              </motion.button>
-            )}
+
+            {/* CTA */}
+            <a
+              href="#contact"
+              onClick={(e) => { e.preventDefault(); scrollTo('#contact'); }}
+              className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-all hover:scale-105 hover:shadow-md hover:shadow-indigo-200/50"
+              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
+            >
+              Hire Me
+            </a>
           </div>
 
-          {/* Mobile Hamburger */}
-          <div className="md:hidden flex items-center gap-2">
-            {isLoggedIn && role === 'Admin' && (
-              <motion.div className="relative">
-                <button className="p-2 rounded-full hover:bg-purple-600/20 transition-colors">
-                  <Bell size={18} />
-                  {notificationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-                      {notificationCount}
-                    </span>
-                  )}
-                </button>
-              </motion.div>
-            )}
-            
-            <motion.button 
-              className="p-1" 
-              onClick={toggleMenu}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onMouseEnter={playHoverSound}
-            >
-              {menuOpen ? <X size={24} /> : <Menu size={24} />}
-            </motion.button>
-          </div>
+          {/* Mobile hamburger */}
+          <motion.button
+            className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-indigo-50 transition-colors"
+            onClick={() => setMenuOpen(!menuOpen)}
+            whileTap={{ scale: 0.9 }}
+          >
+            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          </motion.button>
         </nav>
 
-        {/* Mobile Menu with Enhanced Animation */}
+        {/* Mobile menu */}
         <AnimatePresence>
           {menuOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="md:hidden bg-black/90 backdrop-blur-md px-4 py-4 space-y-4 text-white text-base font-medium border-t border-white/10"
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="md:hidden overflow-hidden bg-white/95 backdrop-blur-md border-t border-indigo-100/60"
             >
-              {navItems.map((item, index) => (
-                <MobileNavItem
-                  key={index}
-                  label={item.label}
-                  href={item.href}
-                  onClick={() => {
-                    closeMenu();
-                    playHoverSound();
-                  }}
-                  isActive={`#${activeSection}` === item.href}
-                />
-              ))}
-              {isLoggedIn && role === 'Admin' && (
-                <MobileNavItem
-                  label="Upload Project"
-                  href="/UploadProject"
-                  onClick={() => {
-                    closeMenu();
-                    playHoverSound();
-                  }}
-                  isLink={true}
-                />
-              )}
-              {/* Only show logout button if logged in */}
-              {isLoggedIn && (
-                <motion.button
-                  onClick={() => {
-                    onLogout();
-                    closeMenu();
-                    playHoverSound();
-                  }}
-                  className="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded text-center transition-colors"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  Logout
-                </motion.button>
-              )}
+              <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-1">
+                {NAV_ITEMS.map(({ icon: Icon, label, href }) => {
+                  const isActive = `#${activeSection}` === href;
+                  return (
+                    <a
+                      key={href}
+                      href={href}
+                      onClick={(e) => { e.preventDefault(); scrollTo(href); setMenuOpen(false); }}
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        isActive
+                          ? 'bg-indigo-50 text-indigo-600'
+                          : 'text-slate-600 hover:bg-indigo-50/60 hover:text-indigo-600'
+                      }`}
+                    >
+                      <Icon size={16} />
+                      {label}
+                    </a>
+                  );
+                })}
+
+                {isFirebaseAuthenticated && (
+                  <Link
+                    to="/UploadProject"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-indigo-50/60 hover:text-indigo-600 transition-all"
+                  >
+                    <Upload size={16} /> Upload Project
+                  </Link>
+                )}
+
+                <div className="border-t border-indigo-100/60 mt-1 pt-2 flex flex-col gap-1">
+                  <button
+                    onClick={() => { window.open(`${import.meta.env.BASE_URL}cv.pdf`, '_blank'); setMenuOpen(false); }}
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-indigo-50/60 hover:text-indigo-600 transition-all"
+                  >
+                    <Download size={16} /> Download CV
+                  </button>
+
+                  <a
+                    href="#contact"
+                    onClick={(e) => { e.preventDefault(); scrollTo('#contact'); setMenuOpen(false); }}
+                    className="flex items-center justify-center gap-2 mx-2 my-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+                    style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
+                  >
+                    Hire Me
+                  </a>
+
+                  {isLoggedIn && (
+                    <button
+                      onClick={() => { onLogout(); setMenuOpen(false); }}
+                      className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all"
+                    >
+                      <LogOut size={16} /> Logout
+                    </button>
+                  )}
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
       </header>
     </>
-  );
-}
-
-function NavItem({ icon, label, href, isActive, onHover }) {
-  const handleClick = (e) => {
-    if (href.startsWith('#')) {
-      e.preventDefault();
-      const targetId = href.substring(1);
-      const element = document.getElementById(targetId);
-      
-      if (element) {
-        // Get header height
-        const headerHeight = document.querySelector('header').offsetHeight;
-        
-        // Get the absolute top position of the element relative to the document
-        const elementOffset = element.getBoundingClientRect().top + window.pageYOffset;
-        
-        // Scroll to exactly the start position of the element minus the header height
-        window.scrollTo({
-          top: elementOffset - headerHeight,
-          behavior: 'smooth'
-        });
-      }
-    }
-  };
-
-  return (
-    <a
-      href={href}
-      onClick={handleClick}
-      className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${
-        isActive 
-          ? 'bg-purple-600/30 text-purple-300 shadow-md' 
-          : 'hover:bg-purple-600/20 hover:backdrop-blur-md hover:shadow-md hover:text-purple-300'
-      }`}
-      onMouseEnter={onHover}
-    >
-      {icon}
-      {label}
-    </a>
-  );
-}
-
-function MobileNavItem({ label, href, onClick, isLink, isActive }) {
-  const className = `block px-4 py-2 rounded transition-colors ${
-    isActive ? 'bg-purple-700/40 text-purple-300' : 'hover:bg-purple-700/30'
-  }`;
-  
-  const handleClick = (e) => {
-    // For regular hash links, prevent default and handle the scroll ourselves
-    if (href.startsWith('#') && !isLink) {
-      e.preventDefault();
-      const targetId = href.substring(1);
-      const element = document.getElementById(targetId);
-      
-      if (element) {
-        // Close the menu first
-        onClick();
-        
-        // Wait a bit for the menu to close then scroll
-        setTimeout(() => {
-          // Get header height
-          const headerHeight = document.querySelector('header').offsetHeight;
-          
-          // Get the absolute top position of the element relative to the document
-          const elementOffset = element.getBoundingClientRect().top + window.pageYOffset;
-          
-          // Scroll to exactly the start position of the element minus the header height
-          window.scrollTo({
-            top: elementOffset - headerHeight,
-            behavior: 'smooth'
-          });
-        }, 300);
-      } else {
-        onClick();
-      }
-    } else {
-      onClick();
-    }
-  };
-  
-  if (isLink) {
-    return (
-      <Link
-        to={href}
-        onClick={handleClick}
-        className={className}
-      >
-        {label}
-      </Link>
-    );
-  }
-  
-  return (
-    <a
-      href={href}
-      onClick={handleClick}
-      className={className}
-    >
-      {label}
-    </a>
   );
 }

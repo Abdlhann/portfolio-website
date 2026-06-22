@@ -20,6 +20,9 @@ dist-ssr
 .env.test.local
 .env.production.local
 
+# Debug screenshots
+firebase-login-*.png
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
