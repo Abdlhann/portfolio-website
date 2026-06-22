@@ -25,29 +25,13 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Debug info
-        run: |
-          echo "Node: $(node -v)"
-          echo "NPM: $(npm -v)"
-          echo "OS: $(uname -a)"
-
       - name: Install dependencies
-        run: npm install 2>&1
+        run: npm install
 
-      - name: Build with debug
-        run: |
-          echo "Starting build..."
-          npx vite build 2>&1 || (echo "BUILD FAILED - exit code: $?" && exit 1)
-          echo "Build completed successfully"
+      - name: Build
+        run: npm run build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-
-      - name: Check dist
-        if: always()
-        run: |
-          echo "Checking dist folder..."
-          ls -la dist/ 2>/dev/null || echo "dist folder does not exist"
-          du -sh dist/ 2>/dev/null || echo "Cannot check dist size"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
